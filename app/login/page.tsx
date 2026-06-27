@@ -11,11 +11,11 @@ export default function LoginPage({
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-coffee text-paper shadow-soft">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-ink text-white shadow-soft">
             <ReceiptText className="h-7 w-7" />
           </div>
-          <h1 className="text-4xl font-bold tracking-tight text-ink">tapp.</h1>
-          <p className="mt-2 text-sm text-coffee/70">
+          <h1 className="text-4xl font-bold tracking-tight text-ink">Tapp.</h1>
+          <p className="mt-2 text-sm text-muted">
             Merchant receipts, ready when the customer taps.
           </p>
         </div>
@@ -44,12 +44,12 @@ export default function LoginPage({
             </div>
 
             {searchParams?.error ? (
-              <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p className="rounded-[10px] bg-red-50 px-3 py-2 text-sm text-red-700">
                 {searchParams.error}
               </p>
             ) : null}
 
-            <button className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-coffee px-4 text-sm font-semibold text-paper transition hover:bg-ink">
+            <button className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[10px] bg-ink px-4 text-sm font-bold text-white transition hover:bg-black">
               Log in
               <ArrowRight className="h-4 w-4" />
             </button>

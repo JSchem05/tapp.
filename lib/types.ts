@@ -11,6 +11,7 @@ export type Merchant = {
   name: string;
   email: string;
   slug: string;
+  logo_url: string | null;
   created_at: string;
 };
 

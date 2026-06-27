@@ -1,16 +1,29 @@
-import { Card } from "@/components/ui";
+import { createTag, setReceiptLive } from "@/app/dashboard/actions";
+import { ReceiptCard } from "@/components/receipt-view";
+import { Card, Input, Label } from "@/components/ui";
 import { formatCurrency, formatDateTime } from "@/lib/money";
 import { getAuthedMerchant } from "@/lib/auth";
 import type { Receipt, Tag } from "@/lib/types";
-import { ArrowUpRight, Plus, ReceiptText, Wifi } from "lucide-react";
+import {
+  ArrowUpRight,
+  ChevronRight,
+  Plus,
+  ReceiptText,
+  Radio,
+  Wifi
+} from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams
+}: {
+  searchParams?: { tag?: string; page?: string; error?: string; tag_added?: string };
+}) {
   const { supabase, merchant } = await getAuthedMerchant();
 
-  const [{ data: tags }, { data: receipts }, { data: latestReceipts }] =
+  const [{ data: tags }, { data: latestReceipts }] =
     await Promise.all([
       supabase
         .from("tags")
@@ -22,13 +35,6 @@ export default async function DashboardPage() {
         .from("receipts")
         .select("*")
         .eq("merchant_id", merchant.id)
-        .order("created_at", { ascending: false })
-        .limit(10)
-        .returns<Receipt[]>(),
-      supabase
-        .from("receipts")
-        .select("*")
-        .eq("merchant_id", merchant.id)
         .eq("is_latest", true)
         .returns<Receipt[]>()
     ]);
@@ -36,128 +42,242 @@ export default async function DashboardPage() {
   const latestByTag = new Map(
     (latestReceipts ?? []).map((receipt) => [receipt.tag_id, receipt])
   );
+  const selectedTag =
+    (tags ?? []).find((tag) => tag.id === searchParams?.tag) ?? tags?.[0] ?? null;
+  const selectedLatest = selectedTag ? latestByTag.get(selectedTag.id) : null;
+  const historyPage = Math.max(1, Number(searchParams?.page ?? "1") || 1);
+  const historyFrom = (historyPage - 1) * 20;
+  const historyTo = historyFrom + 19;
+
+  const { data: selectedHistory } = selectedTag
+    ? await supabase
+        .from("receipts")
+        .select("*")
+        .eq("merchant_id", merchant.id)
+        .eq("tag_id", selectedTag.id)
+        .order("created_at", { ascending: false })
+        .range(historyFrom, historyTo)
+        .returns<Receipt[]>()
+    : { data: [] as Receipt[] };
+  const hasNextPage = (selectedHistory ?? []).length === 20;
 
   return (
-    <div className="space-y-6">
-      <section className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
-        <div className="rounded-2xl bg-coffee p-6 text-paper shadow-soft">
-          <p className="text-sm font-semibold uppercase tracking-wide text-paper/65">
-            Merchant home
-          </p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight">
-            Good counter flow, {merchant.name}.
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-paper/75">
-            Select an NFC puck, enter the sale, and the customer sees the latest
-            receipt the moment they tap.
-          </p>
-        </div>
-
-        <Card className="flex flex-col justify-between">
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_430px]">
+      <section className="space-y-5">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-clay">
-              Quick action
+            <p className="text-sm font-bold uppercase tracking-wide text-amber">
+              Counter menu
             </p>
-            <h2 className="mt-2 text-2xl font-bold text-ink">New receipt</h2>
-          </div>
-          <Link
-            href="/dashboard/receipt/new"
-            className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-coffee px-4 text-sm font-semibold text-paper transition hover:bg-ink"
-          >
-            <Plus className="h-4 w-4" />
-            Create receipt
-          </Link>
-        </Card>
-      </section>
-
-      <section>
-        <div className="mb-3 flex items-end justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-bold text-ink">NFC pucks</h2>
-            <p className="mt-1 text-sm text-coffee/65">
-              One permanent URL per counter or location.
+            <h1 className="mt-1 text-3xl font-bold tracking-tight text-ink">
+              NFC counters
+            </h1>
+            <p className="mt-1 text-sm text-muted">
+              Each puck keeps its own latest receipt and history.
             </p>
           </div>
+          {searchParams?.error ? (
+            <p className="rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-red-700">
+              {searchParams.error}
+            </p>
+          ) : null}
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           {(tags ?? []).map((tag) => {
             const latest = latestByTag.get(tag.id);
+            const active = tag.id === selectedTag?.id;
             return (
-              <Card key={tag.id} className="p-4">
+              <Card
+                key={tag.id}
+                className={`h-full p-4 transition hover:-translate-y-0.5 hover:border-amber ${
+                  active ? "border-amber ring-4 ring-amber/10" : ""
+                }`}
+              >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cream text-coffee">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber/15 text-amber">
                       <Wifi className="h-5 w-5" />
                     </div>
-                    <div>
-                      <h3 className="font-bold text-ink">{tag.label}</h3>
-                      <p className="text-sm text-coffee/60">{tag.tag_code}</p>
+                    <div className="min-w-0">
+                      <h3 className="truncate font-bold text-ink">{tag.label}</h3>
+                      <p className="text-sm font-semibold text-muted">
+                        {tag.tag_code}
+                      </p>
                     </div>
                   </div>
-                  <Link
-                    href={`/dashboard/receipt/new?tag=${tag.id}`}
-                    className="inline-flex h-9 items-center gap-1 rounded-xl bg-coffee px-3 text-sm font-semibold text-paper transition hover:bg-ink"
-                  >
-                    New
-                    <ArrowUpRight className="h-4 w-4" />
-                  </Link>
+                  {active ? <Radio className="h-5 w-5 text-amber" /> : null}
                 </div>
-                <p className="mt-4 text-sm text-coffee/65">
+                <p className="mt-4 text-sm text-muted">
                   Last receipt:{" "}
-                  <span className="font-medium text-ink">
+                  <span className="font-semibold text-ink">
                     {latest ? formatDateTime(latest.created_at) : "None yet"}
                   </span>
                 </p>
+                <div className="mt-4 flex gap-2">
+                  <Link
+                    href={`/dashboard?tag=${tag.id}`}
+                    scroll={false}
+                    className="inline-flex h-10 flex-1 items-center justify-center rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink hover:border-amber hover:text-amber"
+                  >
+                    Select
+                  </Link>
+                  <Link
+                    href={`/dashboard/receipt/new?tag=${tag.id}`}
+                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-[10px] bg-amber px-3 text-sm font-bold text-white"
+                  >
+                    New Receipt
+                    <ArrowUpRight className="h-4 w-4" />
+                  </Link>
+                </div>
               </Card>
             );
           })}
         </div>
+
+        <Card>
+          <details>
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+              <span>
+                <span className="block text-lg font-bold text-ink">Add Counter</span>
+                <span className="text-sm text-muted">Create another NFC puck URL.</span>
+              </span>
+              <Plus className="h-5 w-5 text-amber" />
+            </summary>
+            <form action={createTag} className="mt-5 grid gap-3 sm:grid-cols-[1fr_150px_auto]">
+              <div className="space-y-2">
+                <Label>Counter label</Label>
+                <Input name="label" placeholder="Garden Bar" required />
+              </div>
+              <div className="space-y-2">
+                <Label>Tag code</Label>
+                <Input name="tag_code" placeholder="GARDEN01" />
+              </div>
+              <button className="self-end rounded-[10px] border border-ink bg-white px-4 py-3 text-sm font-bold text-ink transition hover:border-amber hover:text-amber">
+                Add
+              </button>
+            </form>
+          </details>
+        </Card>
       </section>
 
-      <section>
-        <div className="mb-3">
-          <h2 className="text-xl font-bold text-ink">Last 10 receipts</h2>
-        </div>
-        <Card className="overflow-hidden p-0">
-          {(receipts ?? []).length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] text-left text-sm">
-                <thead className="bg-cream text-coffee">
-                  <tr>
-                    <th className="px-4 py-3 font-semibold">Date</th>
-                    <th className="px-4 py-3 font-semibold">Total</th>
-                    <th className="px-4 py-3 font-semibold">Items</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-coffee/10">
-                  {(receipts ?? []).map((receipt) => (
-                    <tr key={receipt.id}>
-                      <td className="px-4 py-3 text-ink">
-                        {formatDateTime(receipt.created_at)}
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-ink">
-                        {formatCurrency(receipt.total)}
-                      </td>
-                      <td className="px-4 py-3 text-coffee/70">
-                        {receipt.items.length}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      <aside className="space-y-5 lg:sticky lg:top-5">
+        <Card>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold uppercase tracking-wide text-amber">
+                Live receipt
+              </p>
+              <h2 className="text-2xl font-bold text-ink">
+                {selectedTag?.label ?? "No counter"}
+              </h2>
             </div>
+            {selectedTag ? (
+              <Link
+                href={`/dashboard/receipt/new?tag=${selectedTag.id}`}
+                className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-ink px-3 text-sm font-bold text-white"
+              >
+                <Plus className="h-4 w-4" />
+                New
+              </Link>
+            ) : null}
+          </div>
+          {selectedLatest ? (
+            <ReceiptCard
+              merchantName={merchant.name}
+              merchantLogoUrl={merchant.logo_url}
+              receipt={selectedLatest}
+              compact
+              className="shadow-none"
+            />
           ) : (
-            <div className="px-5 py-12 text-center">
-              <ReceiptText className="mx-auto h-9 w-9 text-coffee/35" />
-              <p className="mt-3 font-semibold text-ink">No receipts yet</p>
-              <p className="mt-1 text-sm text-coffee/65">
-                Create your first sale receipt from the button above.
+            <div className="rounded-2xl border border-dashed border-line py-12 text-center">
+              <ReceiptText className="mx-auto h-9 w-9 text-muted/40" />
+              <p className="mt-3 font-bold text-ink">No live receipt</p>
+              <p className="mt-1 text-sm text-muted">
+                Create a receipt to make this puck live.
               </p>
             </div>
           )}
         </Card>
-      </section>
+
+        <Card className="p-0">
+          <div className="border-b border-line p-5">
+            <h2 className="text-xl font-bold text-ink">Receipt history</h2>
+            <p className="text-sm text-muted">
+              Page {historyPage}, 20 receipts at a time.
+            </p>
+          </div>
+          {(selectedHistory ?? []).length > 0 ? (
+            <div className="divide-y divide-line">
+              {(selectedHistory ?? []).map((receipt) => (
+                <div
+                  key={receipt.id}
+                  className="grid gap-3 px-5 py-4 sm:grid-cols-[1fr_auto]"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-ink">
+                      {formatDateTime(receipt.created_at)}
+                    </p>
+                    <p className="mt-1 text-sm text-muted">
+                      {receipt.items.length} items · {formatCurrency(receipt.total)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/r/${receipt.id}`}
+                      className="inline-flex h-9 items-center gap-1 rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink hover:border-amber hover:text-amber"
+                    >
+                      View
+                      <ChevronRight className="h-4 w-4" />
+                    </Link>
+                    {selectedTag ? (
+                      <form action={setReceiptLive}>
+                        <input type="hidden" name="receipt_id" value={receipt.id} />
+                        <input type="hidden" name="tag_id" value={selectedTag.id} />
+                        <button className="h-9 rounded-[10px] bg-ink px-3 text-sm font-bold text-white disabled:opacity-50">
+                          {receipt.is_latest ? "Live" : "Set live"}
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="px-5 py-10 text-center text-sm text-muted">
+              No receipt history for this counter yet.
+            </div>
+          )}
+          {(historyPage > 1 || hasNextPage) && selectedTag ? (
+            <div className="flex items-center justify-between gap-3 border-t border-line p-4">
+              <Link
+                href={`/dashboard?tag=${selectedTag.id}&page=${historyPage - 1}`}
+                className={`rounded-[10px] border border-line px-3 py-2 text-sm font-bold ${
+                  historyPage > 1
+                    ? "text-ink hover:border-amber hover:text-amber"
+                    : "pointer-events-none text-muted/40"
+                }`}
+              >
+                Previous
+              </Link>
+              <span className="text-sm font-semibold text-muted">
+                Page {historyPage}
+              </span>
+              <Link
+                href={`/dashboard?tag=${selectedTag.id}&page=${historyPage + 1}`}
+                className={`rounded-[10px] border border-line px-3 py-2 text-sm font-bold ${
+                  hasNextPage
+                    ? "text-ink hover:border-amber hover:text-amber"
+                    : "pointer-events-none text-muted/40"
+                }`}
+              >
+                Next
+              </Link>
+            </div>
+          ) : null}
+        </Card>
+      </aside>
     </div>
   );
 }

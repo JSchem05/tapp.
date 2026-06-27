@@ -5,8 +5,12 @@ create table if not exists public.merchants (
   name text not null,
   email text not null,
   slug text not null unique,
+  logo_url text,
   created_at timestamptz not null default now()
 );
+
+alter table public.merchants
+  add column if not exists logo_url text;
 
 create table if not exists public.tags (
   id uuid primary key default gen_random_uuid(),
@@ -41,6 +45,10 @@ create index if not exists receipts_tag_latest_idx on public.receipts(tag_id, is
 alter table public.merchants enable row level security;
 alter table public.tags enable row level security;
 alter table public.receipts enable row level security;
+
+insert into storage.buckets (id, name, public)
+values ('logos', 'logos', true)
+on conflict (id) do update set public = true;
 
 drop policy if exists "Merchants can read their own profile" on public.merchants;
 create policy "Merchants can read their own profile"
@@ -114,6 +122,43 @@ create policy "Merchants can update their receipts"
   to authenticated
   using (merchant_id = auth.uid())
   with check (merchant_id = auth.uid());
+
+drop policy if exists "Public can read logos" on storage.objects;
+create policy "Public can read logos"
+  on storage.objects for select
+  to anon, authenticated
+  using (bucket_id = 'logos');
+
+drop policy if exists "Merchants can upload their logos" on storage.objects;
+create policy "Merchants can upload their logos"
+  on storage.objects for insert
+  to authenticated
+  with check (
+    bucket_id = 'logos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "Merchants can update their logos" on storage.objects;
+create policy "Merchants can update their logos"
+  on storage.objects for update
+  to authenticated
+  using (
+    bucket_id = 'logos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  )
+  with check (
+    bucket_id = 'logos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "Merchants can delete their logos" on storage.objects;
+create policy "Merchants can delete their logos"
+  on storage.objects for delete
+  to authenticated
+  using (
+    bucket_id = 'logos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
 
 create or replace function public.handle_new_user()
 returns trigger

@@ -2,12 +2,13 @@ import { ReceiptView } from "@/components/receipt-view";
 import { Card } from "@/components/ui";
 import { createPublicClient } from "@/lib/supabase/public";
 import type { Merchant, Receipt, Tag } from "@/lib/types";
+import { getBaseUrl } from "@/lib/url";
 import { AlertTriangle, ReceiptText } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 type TagWithMerchant = Tag & {
-  merchants: Pick<Merchant, "name"> | null;
+  merchants: Pick<Merchant, "name" | "logo_url"> | null;
 };
 
 export default async function PublicReceiptPage({
@@ -133,10 +134,35 @@ export default async function PublicReceiptPage({
     );
   }
 
+  const { data: history, error: historyError } = await supabase
+    .from("receipts")
+    .select("*")
+    .eq("merchant_id", tag.merchant_id)
+    .eq("tag_id", tag.id)
+    .order("created_at", { ascending: false })
+    .limit(10)
+    .returns<Receipt[]>();
+
+  console.log("[public-receipt] history lookup", {
+    tagCode: tag.tag_code,
+    error: historyError,
+    count: history?.length ?? 0
+  });
+
+  const merchantName = tag.merchants?.name ?? "Merchant";
+  const logoUrl = tag.merchants?.logo_url ?? null;
+  const baseUrl = getBaseUrl();
+
   return (
     <PublicShell>
       {receipt ? (
-        <ReceiptView merchantName={tag.merchants?.name ?? "Merchant"} receipt={receipt} />
+        <ReceiptView
+          merchantName={merchantName}
+          merchantLogoUrl={logoUrl}
+          receipt={receipt}
+          history={(history ?? []).filter((item) => item.id !== receipt.id)}
+          permalink={`${baseUrl}/r/${receipt.id}`}
+        />
       ) : (
         <EmptyReceipt
           title="No receipt available yet"
@@ -149,13 +175,15 @@ export default async function PublicReceiptPage({
 
 function PublicShell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-paper px-4 py-5 sm:bg-cream sm:py-10">
-      <div className="mx-auto w-full max-w-md">
+    <main className="min-h-screen bg-cream px-4 py-5 sm:py-10">
+      <div className="mx-auto grid w-full max-w-5xl gap-6 md:grid-cols-[minmax(0,420px)_minmax(240px,1fr)] md:items-start">
         <div className="mb-5 text-center">
-          <p className="text-3xl font-bold text-ink">tapp.</p>
-          <p className="mt-1 text-sm text-coffee/60">Digital receipt</p>
+          <p className="text-4xl font-bold tracking-tight text-ink">tapp.</p>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            NFC receipts for cafés, counters, and quick visits.
+          </p>
         </div>
-        {children}
+        <div className="md:max-w-md">{children}</div>
       </div>
     </main>
   );
@@ -164,11 +192,11 @@ function PublicShell({ children }: { children: React.ReactNode }) {
 function EmptyReceipt({ title, body }: { title: string; body: string }) {
   return (
     <Card className="py-12 text-center">
-      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-cream text-coffee">
+      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber/15 text-amber">
         <ReceiptText className="h-7 w-7" />
       </div>
       <h1 className="text-xl font-bold text-ink">{title}</h1>
-      <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-coffee/65">{body}</p>
+      <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-muted">{body}</p>
     </Card>
   );
 }
@@ -180,7 +208,7 @@ function ErrorReceipt({ title, body }: { title: string; body: string }) {
         <AlertTriangle className="h-7 w-7" />
       </div>
       <h1 className="text-xl font-bold text-ink">{title}</h1>
-      <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-coffee/65">
+      <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-muted">
         {body}
       </p>
     </Card>

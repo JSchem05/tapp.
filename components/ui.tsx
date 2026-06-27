@@ -11,7 +11,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-coffee/10 bg-paper p-5 shadow-soft",
+        "rounded-2xl border border-line bg-white p-5 shadow-soft",
         className
       )}
     >
@@ -27,7 +27,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-coffee px-4 text-sm font-semibold text-paper transition hover:bg-ink disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex h-11 items-center justify-center gap-2 rounded-[10px] bg-ink px-4 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-60",
         className
       )}
       {...props}
@@ -42,7 +42,7 @@ export function SecondaryButton({
   return (
     <button
       className={cn(
-        "inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-coffee/15 bg-white px-4 text-sm font-semibold text-coffee transition hover:bg-cream disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex h-11 items-center justify-center gap-2 rounded-[10px] border border-ink bg-white px-4 text-sm font-semibold text-ink transition hover:bg-cream disabled:cursor-not-allowed disabled:opacity-60",
         className
       )}
       {...props}
@@ -57,7 +57,7 @@ export function Input({
   return (
     <input
       className={cn(
-        "h-11 w-full rounded-xl border border-coffee/15 bg-white px-3 text-sm text-ink outline-none transition placeholder:text-coffee/45 focus:border-clay focus:ring-4 focus:ring-clay/10",
+        "h-11 w-full rounded-[10px] border border-line bg-white px-3 text-sm text-ink outline-none transition placeholder:text-muted focus:border-amber focus:ring-4 focus:ring-amber/15",
         className
       )}
       {...props}
@@ -72,7 +72,7 @@ export function Select({
   return (
     <select
       className={cn(
-        "h-11 w-full rounded-xl border border-coffee/15 bg-white px-3 text-sm text-ink outline-none transition focus:border-clay focus:ring-4 focus:ring-clay/10",
+        "h-11 w-full rounded-[10px] border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/15",
         className
       )}
       {...props}
@@ -88,7 +88,7 @@ export function Label({
   className?: string;
 }) {
   return (
-    <label className={cn("text-sm font-medium text-coffee", className)}>
+    <label className={cn("text-sm font-medium text-muted", className)}>
       {children}
     </label>
   );
