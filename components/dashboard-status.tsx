@@ -9,7 +9,7 @@ export function OpenClosedToggle() {
     <button
       type="button"
       onClick={() => setOpen((value) => !value)}
-      className="flex items-center gap-2 rounded-full border border-line bg-white px-3 py-2 text-sm font-bold text-ink shadow-soft"
+      className="flex h-9 items-center gap-2 rounded-full border border-line bg-white px-3 text-sm font-bold text-ink shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft"
     >
       <span
         className={`h-2.5 w-2.5 rounded-full ${
@@ -30,7 +30,7 @@ export function HeaderClock() {
   }, []);
 
   return (
-    <div className="rounded-full bg-white px-4 py-2 text-center text-sm font-semibold text-muted shadow-soft">
+    <div className="rounded-full bg-[#FAF8F4] px-4 py-2 text-center text-sm font-semibold text-muted">
       {new Intl.DateTimeFormat("en-MT", {
         weekday: "short",
         day: "numeric",

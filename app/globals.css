@@ -4,6 +4,18 @@
 
 :root {
   color-scheme: light;
+  --bg: #f5f2ed;
+  --card: #ffffff;
+  --accent: #c8873a;
+  --accent-dark: #1a1a1a;
+  --text-primary: #1a1a1a;
+  --text-secondary: #8a8480;
+  --border: #e8e3db;
+  --radius-card: 20px;
+  --radius-button: 10px;
+  --radius-pill: 999px;
+  --shadow-card: 0 2px 16px rgba(0, 0, 0, 0.07);
+  --shadow-hover: 0 4px 24px rgba(0, 0, 0, 0.11);
 }
 
 * {
@@ -12,8 +24,10 @@
 
 body {
   min-height: 100vh;
-  background: #f5f3ef;
-  color: #1a1a1a;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.44), rgba(245, 242, 237, 0) 240px),
+    var(--bg);
+  color: var(--text-primary);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -26,8 +40,22 @@ select {
 }
 
 ::selection {
-  background: #c8873a;
+  background: var(--accent);
   color: #ffffff;
+}
+
+button,
+a,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(200, 135, 58, 0.24);
+  outline-offset: 2px;
 }
 
 @keyframes tapp-fade-up {
@@ -42,7 +70,43 @@ select {
 }
 
 .animate-tapp-fade {
-  animation: tapp-fade-up 420ms ease-out both;
+  animation: tapp-fade-up 200ms ease-out both;
+}
+
+@keyframes tapp-toast {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-tapp-toast {
+  animation: tapp-toast 180ms ease-out both;
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #eee9e2;
+}
+
+.skeleton::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
+  animation: skeleton-shimmer 1.25s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 @media print {

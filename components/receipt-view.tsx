@@ -6,13 +6,7 @@ import { Card } from "@/components/ui";
 import { formatCurrency, formatDateTime } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import type { Receipt, ReceiptItem } from "@/lib/types";
-import {
-  ChevronDown,
-  Download,
-  Printer,
-  ReceiptText,
-  Share2
-} from "lucide-react";
+import { ChevronDown, Download, Printer, Share2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
 type ReceiptDisplay = Pick<
@@ -92,7 +86,7 @@ export function ReceiptView({
   return (
     <div className="animate-tapp-fade space-y-4">
       {banner ? (
-        <div className="rounded-full border border-line bg-white px-4 py-2 text-center text-sm font-medium text-muted shadow-soft">
+        <div className="rounded-full border border-line bg-white px-4 py-2 text-center text-sm font-semibold text-muted shadow-soft">
           {banner}
         </div>
       ) : null}
@@ -109,13 +103,13 @@ export function ReceiptView({
       {showActions ? (
         <div className="no-print grid grid-cols-3 gap-2">
           <ActionButton onClick={savePdf} icon={<Printer className="h-4 w-4" />}>
-            Save PDF
+            PDF
           </ActionButton>
           <ActionButton
             onClick={saveImage}
             icon={<Download className="h-4 w-4" />}
           >
-            Save Image
+            Image
           </ActionButton>
           <ActionButton onClick={shareReceipt} icon={<Share2 className="h-4 w-4" />}>
             Share
@@ -136,7 +130,7 @@ export function ReceiptView({
       </p>
 
       {toast ? (
-        <div className="no-print fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white shadow-soft">
+        <div className="no-print animate-tapp-toast fixed bottom-5 right-5 z-50 rounded-[14px] bg-ink px-4 py-3 text-sm font-semibold text-white shadow-lift">
           {toast}
         </div>
       ) : null}
@@ -160,11 +154,17 @@ export function ReceiptCard({
   const items = receipt.items as ReceiptItem[];
 
   return (
-    <Card className={cn("overflow-hidden", compact ? "p-4" : "p-5 sm:p-6", className)}>
+    <Card
+      className={cn(
+        "overflow-hidden rounded-[20px] border-line bg-white",
+        compact ? "p-5" : "p-6",
+        className
+      )}
+    >
       <div className="mb-6 flex items-start gap-3">
         <LogoMark merchantName={merchantName} logoUrl={merchantLogoUrl} />
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-xl font-bold tracking-tight text-ink">
+          <h1 className="truncate text-xl font-extrabold tracking-tight text-ink">
             {merchantName}
           </h1>
           <p className="mt-1 text-sm text-muted">
@@ -177,15 +177,15 @@ export function ReceiptCard({
         {items.map((item, index) => (
           <div
             key={`${item.name}-${index}`}
-            className="grid grid-cols-[1fr_auto] gap-4 py-4"
+            className="grid grid-cols-[1fr_auto] gap-4 py-4 first:pt-5 last:pb-5"
           >
             <div className="min-w-0">
-              <p className="truncate font-semibold text-ink">{item.name}</p>
+              <p className="truncate font-bold text-ink">{item.name}</p>
               <p className="mt-1 text-sm text-muted">
                 Qty {item.qty} x {formatCurrency(item.price)}
               </p>
             </div>
-            <p className="font-semibold text-ink">
+            <p className="font-bold text-ink">
               {formatCurrency(item.qty * item.price)}
             </p>
           </div>
@@ -196,8 +196,8 @@ export function ReceiptCard({
         <ReceiptRow label="Subtotal" value={formatCurrency(receipt.subtotal)} />
         <ReceiptRow label="VAT 18%" value={formatCurrency(receipt.vat)} />
         <div className="flex items-center justify-between border-t border-line pt-4">
-          <span className="text-base font-semibold text-ink">Total</span>
-          <span className="text-3xl font-bold tracking-tight text-ink">
+          <span className="text-base font-extrabold text-ink">Total</span>
+          <span className="text-3xl font-extrabold tracking-tight text-ink">
             {formatCurrency(receipt.total)}
           </span>
         </div>
@@ -205,7 +205,7 @@ export function ReceiptCard({
 
       <div className="mt-5 flex items-center justify-between">
         <span className="text-sm font-medium text-muted">Payment method</span>
-        <span className="rounded-full bg-amber/15 px-3 py-1 text-sm font-bold text-amber">
+        <span className="rounded-full bg-amber/15 px-3 py-1 text-sm font-extrabold text-amber">
           {receipt.payment_method}
         </span>
       </div>
@@ -225,13 +225,13 @@ function PreviousVisits({
   return (
     <section className="no-print space-y-3">
       <div>
-        <h2 className="text-lg font-bold text-ink">Previous visits</h2>
+        <h2 className="text-lg font-extrabold text-ink">Previous visits</h2>
         <p className="text-sm text-muted">Last 10 receipts from this counter.</p>
       </div>
-      <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-soft">
+      <div className="overflow-hidden rounded-[20px] border border-line bg-white shadow-soft">
         {receipts.map((receipt) => (
           <details key={receipt.id} className="group border-b border-line last:border-b-0">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 transition hover:bg-[#FFF9F1]">
               <span className="min-w-0">
                 <span className="block truncate text-sm font-semibold text-ink">
                   {formatDateTime(receipt.created_at)}
@@ -275,14 +275,21 @@ function LogoMark({
       <img
         src={logoUrl}
         alt={`${merchantName} logo`}
-        className="h-12 w-12 rounded-2xl border border-line object-cover"
+        className="h-14 w-14 rounded-full border border-line object-cover"
       />
     );
   }
 
+  const initials = merchantName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "T";
+
   return (
-    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber/15 text-amber">
-      <ReceiptText className="h-6 w-6" />
+    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-amber/15 text-lg font-extrabold text-amber">
+      {initials}
     </div>
   );
 }
@@ -309,7 +316,7 @@ function ActionButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex h-12 min-w-0 items-center justify-center gap-1.5 rounded-[10px] border border-line bg-white px-2 text-xs font-bold text-ink shadow-soft transition hover:border-amber hover:text-amber sm:text-sm"
+      className="flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-full border border-line bg-white px-3 text-xs font-bold text-ink shadow-soft transition hover:-translate-y-0.5 hover:border-amber hover:bg-[#FFF9F1] hover:text-amber hover:shadow-lift sm:text-sm"
     >
       {icon}
       <span className="truncate">{children}</span>

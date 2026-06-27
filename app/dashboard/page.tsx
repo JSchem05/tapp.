@@ -7,6 +7,7 @@ import type { Receipt, Tag } from "@/lib/types";
 import {
   ArrowUpRight,
   ChevronRight,
+  CircleDashed,
   Plus,
   ReceiptText,
   Radio,
@@ -62,15 +63,15 @@ export default async function DashboardPage({
   const hasNextPage = (selectedHistory ?? []).length === 20;
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_430px]">
-      <section className="space-y-5">
+    <div className="animate-tapp-fade grid gap-6 lg:grid-cols-[minmax(0,1fr)_440px]">
+      <section className="space-y-6">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
-            <p className="text-sm font-bold uppercase tracking-wide text-amber">
-              Counter menu
-            </p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight text-ink">
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.24em] text-muted">
               NFC counters
+            </p>
+            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-ink">
+              Counter control
             </h1>
             <p className="mt-1 text-sm text-muted">
               Each puck keeps its own latest receipt and history.
@@ -90,13 +91,16 @@ export default async function DashboardPage({
             return (
               <Card
                 key={tag.id}
-                className={`h-full p-4 transition hover:-translate-y-0.5 hover:border-amber ${
-                  active ? "border-amber ring-4 ring-amber/10" : ""
+                className={`relative h-full overflow-hidden p-5 ${
+                  active ? "border-amber shadow-lift" : ""
                 }`}
               >
+                {active ? (
+                  <span className="absolute inset-y-5 left-0 w-[3px] rounded-r-full bg-amber" />
+                ) : null}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber/15 text-amber">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber/15 text-amber">
                       <Wifi className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
@@ -108,7 +112,7 @@ export default async function DashboardPage({
                   </div>
                   {active ? <Radio className="h-5 w-5 text-amber" /> : null}
                 </div>
-                <p className="mt-4 text-sm text-muted">
+                <p className="mt-5 text-sm text-muted">
                   Last receipt:{" "}
                   <span className="font-semibold text-ink">
                     {latest ? formatDateTime(latest.created_at) : "None yet"}
@@ -118,13 +122,13 @@ export default async function DashboardPage({
                   <Link
                     href={`/dashboard?tag=${tag.id}`}
                     scroll={false}
-                    className="inline-flex h-10 flex-1 items-center justify-center rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink hover:border-amber hover:text-amber"
+                    className="inline-flex h-10 flex-1 items-center justify-center rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink transition hover:-translate-y-0.5 hover:border-amber hover:bg-[#FFF9F1] hover:text-amber hover:shadow-soft"
                   >
                     Select
                   </Link>
                   <Link
                     href={`/dashboard/receipt/new?tag=${tag.id}`}
-                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-[10px] bg-amber px-3 text-sm font-bold text-white"
+                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-[10px] bg-amber px-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lift"
                   >
                     New Receipt
                     <ArrowUpRight className="h-4 w-4" />
@@ -135,16 +139,18 @@ export default async function DashboardPage({
           })}
         </div>
 
-        <Card>
+        <Card className="border-dashed bg-white/70 p-0 hover:bg-[#FFF9F1]">
           <details>
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-              <span>
-                <span className="block text-lg font-bold text-ink">Add Counter</span>
-                <span className="text-sm text-muted">Create another NFC puck URL.</span>
+            <summary className="flex cursor-pointer list-none flex-col items-center justify-center gap-3 p-8 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-amber bg-amber/10 text-amber">
+                <Plus className="h-5 w-5" />
               </span>
-              <Plus className="h-5 w-5 text-amber" />
+              <span>
+                <span className="block text-lg font-extrabold text-ink">Add Counter</span>
+                <span className="text-sm text-muted">Create another NFC puck URL</span>
+              </span>
             </summary>
-            <form action={createTag} className="mt-5 grid gap-3 sm:grid-cols-[1fr_150px_auto]">
+            <form action={createTag} className="grid gap-3 border-t border-dashed border-line p-5 sm:grid-cols-[1fr_150px_auto]">
               <div className="space-y-2">
                 <Label>Counter label</Label>
                 <Input name="label" placeholder="Garden Bar" required />
@@ -153,7 +159,7 @@ export default async function DashboardPage({
                 <Label>Tag code</Label>
                 <Input name="tag_code" placeholder="GARDEN01" />
               </div>
-              <button className="self-end rounded-[10px] border border-ink bg-white px-4 py-3 text-sm font-bold text-ink transition hover:border-amber hover:text-amber">
+              <button className="self-end rounded-[10px] bg-amber px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lift">
                 Add
               </button>
             </form>
@@ -161,21 +167,21 @@ export default async function DashboardPage({
         </Card>
       </section>
 
-      <aside className="space-y-5 lg:sticky lg:top-5">
-        <Card>
-          <div className="mb-4 flex items-center justify-between gap-3">
+      <aside className="space-y-5 lg:sticky lg:top-20">
+        <Card className="p-6">
+          <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-bold uppercase tracking-wide text-amber">
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.24em] text-amber">
                 Live receipt
               </p>
-              <h2 className="text-2xl font-bold text-ink">
+              <h2 className="mt-1 text-2xl font-extrabold text-ink">
                 {selectedTag?.label ?? "No counter"}
               </h2>
             </div>
             {selectedTag ? (
               <Link
                 href={`/dashboard/receipt/new?tag=${selectedTag.id}`}
-                className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-ink px-3 text-sm font-bold text-white"
+                className="inline-flex h-9 items-center gap-2 rounded-[10px] bg-ink px-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-black hover:shadow-lift"
               >
                 <Plus className="h-4 w-4" />
                 New
@@ -188,12 +194,14 @@ export default async function DashboardPage({
               merchantLogoUrl={merchant.logo_url}
               receipt={selectedLatest}
               compact
-              className="shadow-none"
+              className="shadow-none hover:shadow-none"
             />
           ) : (
-            <div className="rounded-2xl border border-dashed border-line py-12 text-center">
-              <ReceiptText className="mx-auto h-9 w-9 text-muted/40" />
-              <p className="mt-3 font-bold text-ink">No live receipt</p>
+            <div className="rounded-[20px] border border-dashed border-line bg-[#FAF8F4] px-6 py-12 text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white text-amber shadow-soft">
+                <CircleDashed className="h-7 w-7" />
+              </div>
+              <p className="mt-4 font-extrabold text-ink">No live receipt</p>
               <p className="mt-1 text-sm text-muted">
                 Create a receipt to make this puck live.
               </p>
@@ -201,19 +209,19 @@ export default async function DashboardPage({
           )}
         </Card>
 
-        <Card className="p-0">
+        <Card className="bg-transparent p-0 shadow-none hover:shadow-none">
           <div className="border-b border-line p-5">
-            <h2 className="text-xl font-bold text-ink">Receipt history</h2>
+            <h2 className="text-xl font-extrabold text-ink">Receipt history</h2>
             <p className="text-sm text-muted">
               Page {historyPage}, 20 receipts at a time.
             </p>
           </div>
           {(selectedHistory ?? []).length > 0 ? (
-            <div className="divide-y divide-line">
+            <div className="space-y-3 p-3">
               {(selectedHistory ?? []).map((receipt) => (
                 <div
                   key={receipt.id}
-                  className="grid gap-3 px-5 py-4 sm:grid-cols-[1fr_auto]"
+                  className="grid gap-3 rounded-[18px] border border-line bg-white px-4 py-3 shadow-soft transition hover:-translate-y-0.5 hover:bg-[#FFF9F1] hover:shadow-lift sm:grid-cols-[1fr_auto]"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold text-ink">
@@ -226,7 +234,7 @@ export default async function DashboardPage({
                   <div className="flex items-center gap-2">
                     <Link
                       href={`/r/${receipt.id}`}
-                      className="inline-flex h-9 items-center gap-1 rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink hover:border-amber hover:text-amber"
+                      className="inline-flex h-8 items-center gap-1 rounded-full border border-line bg-white px-3 text-xs font-bold text-ink hover:border-amber hover:text-amber"
                     >
                       View
                       <ChevronRight className="h-4 w-4" />
@@ -235,7 +243,13 @@ export default async function DashboardPage({
                       <form action={setReceiptLive}>
                         <input type="hidden" name="receipt_id" value={receipt.id} />
                         <input type="hidden" name="tag_id" value={selectedTag.id} />
-                        <button className="h-9 rounded-[10px] bg-ink px-3 text-sm font-bold text-white disabled:opacity-50">
+                        <button
+                          className={`h-8 rounded-full px-3 text-xs font-bold ${
+                            receipt.is_latest
+                              ? "bg-green-50 text-green-700"
+                              : "bg-ink text-white"
+                          }`}
+                        >
                           {receipt.is_latest ? "Live" : "Set live"}
                         </button>
                       </form>
@@ -245,8 +259,12 @@ export default async function DashboardPage({
               ))}
             </div>
           ) : (
-            <div className="px-5 py-10 text-center text-sm text-muted">
-              No receipt history for this counter yet.
+            <div className="px-5 py-12 text-center text-sm text-muted">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-white text-amber shadow-soft">
+                <ReceiptText className="h-7 w-7" />
+              </div>
+              <p className="font-bold text-ink">No receipt history yet</p>
+              <p className="mt-1">Receipts for this counter will appear here.</p>
             </div>
           )}
           {(historyPage > 1 || hasNextPage) && selectedTag ? (

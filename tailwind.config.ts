@@ -9,18 +9,19 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        cream: "#F5F3EF",
+        cream: "#F5F2ED",
         paper: "#FFFFFF",
         amber: "#C8873A",
         clay: "#A06F3C",
-        coffee: "#6B6560",
-        muted: "#6B6560",
-        line: "#E8E4DE",
+        coffee: "#8A8480",
+        muted: "#8A8480",
+        line: "#E8E3DB",
         sage: "#7A8B75",
         ink: "#1A1A1A"
       },
       boxShadow: {
-        soft: "0 2px 12px rgba(0, 0, 0, 0.06)"
+        soft: "0 2px 16px rgba(0, 0, 0, 0.07)",
+        lift: "0 4px 24px rgba(0, 0, 0, 0.11)"
       }
     }
   },

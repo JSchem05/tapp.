@@ -176,14 +176,14 @@ export default async function PublicReceiptPage({
 function PublicShell({ children }: { children: React.ReactNode }) {
   return (
     <main className="min-h-screen bg-cream px-4 py-5 sm:py-10">
-      <div className="mx-auto grid w-full max-w-5xl gap-6 md:grid-cols-[minmax(0,420px)_minmax(240px,1fr)] md:items-start">
-        <div className="mb-5 text-center">
-          <p className="text-4xl font-bold tracking-tight text-ink">tapp.</p>
+      <div className="mx-auto grid w-full max-w-5xl gap-8 md:grid-cols-[minmax(0,380px)_minmax(360px,440px)] md:items-start md:justify-center">
+        <div className="text-center md:sticky md:top-10 md:pt-10 md:text-left">
+          <p className="text-4xl font-extrabold tracking-tight text-ink">tapp.</p>
           <p className="mt-2 text-sm leading-6 text-muted">
             NFC receipts for cafés, counters, and quick visits.
           </p>
         </div>
-        <div className="md:max-w-md">{children}</div>
+        <div>{children}</div>
       </div>
     </main>
   );

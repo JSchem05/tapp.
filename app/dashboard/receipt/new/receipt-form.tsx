@@ -5,7 +5,7 @@ import { ReceiptCard } from "@/components/receipt-view";
 import { Card, Input, Label, SecondaryButton } from "@/components/ui";
 import { calculateReceiptTotals, formatCurrency } from "@/lib/money";
 import type { PaymentMethod, ReceiptItem, Tag } from "@/lib/types";
-import { Minus, Plus, ReceiptText } from "lucide-react";
+import { Minus, Plus, ReceiptText, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type DraftItem = ReceiptItem & { key: string };
@@ -72,18 +72,18 @@ export function ReceiptForm({
   }
 
   return (
-    <form action={createReceipt} className="grid gap-5 lg:grid-cols-[1fr_420px]">
+    <form action={createReceipt} className="animate-tapp-fade grid gap-6 lg:grid-cols-[minmax(0,1fr)_430px]">
       <input type="hidden" name="items" value={serializedItems} />
       <input type="hidden" name="tag_id" value={selectedTagId} />
       <input type="hidden" name="payment_method" value={paymentMethod} />
 
-      <Card className="space-y-5">
+      <Card className="space-y-6 p-6">
         <div>
-          <p className="text-sm font-bold uppercase tracking-wide text-amber">
-            New sale
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.24em] text-amber">
+            New Receipt
           </p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight text-ink">
-            Create receipt
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-ink">
+            Build the customer receipt
           </h1>
           <p className="mt-1 text-sm text-muted">
             Choose a counter, add items, and push the receipt live.
@@ -97,7 +97,7 @@ export function ReceiptForm({
         ) : null}
 
         <div className="space-y-2">
-          <Label>NFC counter</Label>
+          <Label>Counter</Label>
           <div className="flex flex-wrap gap-2">
             {tags.map((tag) => (
               <button
@@ -106,8 +106,8 @@ export function ReceiptForm({
                 onClick={() => setSelectedTagId(tag.id)}
                 className={`rounded-full border px-4 py-2 text-sm font-bold transition ${
                   selectedTagId === tag.id
-                    ? "border-amber bg-amber text-white"
-                    : "border-line bg-white text-ink hover:border-amber"
+                    ? "border-amber bg-amber text-white shadow-soft"
+                    : "border-line bg-white text-ink shadow-sm hover:-translate-y-0.5 hover:border-amber hover:bg-[#FFF9F1] hover:shadow-soft"
                 }`}
               >
                 {tag.label}
@@ -117,19 +117,13 @@ export function ReceiptForm({
         </div>
 
         <div className="space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-bold text-ink">Items</h2>
-            <SecondaryButton type="button" onClick={addItem} className="h-9 px-3">
-              <Plus className="h-4 w-4" />
-              Add item
-            </SecondaryButton>
-          </div>
+          <h2 className="text-lg font-extrabold text-ink">Items</h2>
 
           <div className="space-y-3">
             {items.map((item, index) => (
               <div
                 key={item.key}
-                className="grid gap-3 rounded-2xl border border-line bg-white p-3 sm:grid-cols-[1fr_132px_120px_40px]"
+                className="grid gap-3 rounded-[18px] border border-line bg-white p-3 shadow-sm sm:grid-cols-[1fr_132px_140px_44px]"
               >
                 <div className="space-y-2">
                   <Label className="text-xs">Item name</Label>
@@ -173,16 +167,20 @@ export function ReceiptForm({
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs">Price</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={item.price}
-                    onChange={(event) =>
-                      updateItem(item.key, { price: Number(event.target.value) })
-                    }
-                    required
-                  />
+                  <div className="flex h-11 items-center rounded-[10px] border border-line bg-white shadow-sm focus-within:border-amber focus-within:ring-4 focus-within:ring-amber/15">
+                    <span className="pl-3 text-sm font-bold text-muted">€</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.price}
+                      onChange={(event) =>
+                        updateItem(item.key, { price: Number(event.target.value) })
+                      }
+                      className="h-full min-w-0 flex-1 rounded-[10px] border-0 bg-transparent px-2 text-sm text-ink outline-none"
+                      required
+                    />
+                  </div>
                 </div>
                 <div className="flex items-end">
                   <SecondaryButton
@@ -192,12 +190,21 @@ export function ReceiptForm({
                     className="h-11 w-full px-0"
                     disabled={items.length === 1}
                   >
-                    <Minus className="h-4 w-4" />
+                    <X className="h-4 w-4" />
                   </SecondaryButton>
                 </div>
               </div>
             ))}
           </div>
+
+          <button
+            type="button"
+            onClick={addItem}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-[14px] border border-dashed border-line bg-white text-sm font-extrabold text-ink transition hover:-translate-y-0.5 hover:border-amber hover:bg-[#FFF9F1] hover:text-amber hover:shadow-soft"
+          >
+            <Plus className="h-4 w-4" />
+            Add item
+          </button>
         </div>
 
         <div className="space-y-2">
@@ -210,8 +217,8 @@ export function ReceiptForm({
                 onClick={() => setPaymentMethod(method)}
                 className={`rounded-full border px-4 py-2 text-sm font-bold transition ${
                   paymentMethod === method
-                    ? "border-amber bg-amber text-white"
-                    : "border-line bg-white text-ink hover:border-amber"
+                    ? "border-amber bg-amber text-white shadow-soft"
+                    : "border-line bg-white text-ink shadow-sm hover:-translate-y-0.5 hover:border-amber hover:bg-[#FFF9F1] hover:shadow-soft"
                 }`}
               >
                 {method}
@@ -226,13 +233,21 @@ export function ReceiptForm({
           <SummaryRow label="Total" value={formatCurrency(totals.total)} strong />
         </div>
 
-        <button className="flex h-14 w-full items-center justify-center gap-2 rounded-[10px] bg-ink px-4 text-base font-bold text-white transition hover:bg-black">
+        <button className="flex h-14 w-full items-center justify-center gap-2 rounded-[10px] bg-ink px-4 text-base font-extrabold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-black hover:shadow-lift">
           <ReceiptText className="h-5 w-5" />
           Create Receipt
         </button>
       </Card>
 
-      <aside className="h-fit lg:sticky lg:top-5">
+      <aside className="h-fit space-y-3 lg:sticky lg:top-20">
+        <div>
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.24em] text-amber">
+            Preview
+          </p>
+          <h2 className="mt-1 text-xl font-extrabold text-ink">
+            What your customer sees
+          </h2>
+        </div>
         <ReceiptCard
           merchantName={merchantName}
           merchantLogoUrl={merchantLogoUrl}
