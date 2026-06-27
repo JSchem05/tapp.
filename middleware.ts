@@ -3,6 +3,14 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseKey, getSupabaseUrl } from "@/lib/supabase/env";
 
 export async function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/t/")) {
+    return NextResponse.next();
+  }
+
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !getSupabaseKey()) {
+    return NextResponse.next();
+  }
+
   let supabaseResponse = NextResponse.next({
     request: {
       headers: request.headers

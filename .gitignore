@@ -8,3 +8,5 @@ coverage
 *.log
 tsconfig.tsbuildinfo
 .pnpm-store
+.vercel
+.env*

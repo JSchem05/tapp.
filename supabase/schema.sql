@@ -49,7 +49,8 @@ create policy "Merchants can read their own profile"
   using (id = auth.uid());
 
 drop policy if exists "Public can read merchant display names" on public.merchants;
-create policy "Public can read merchant display names"
+drop policy if exists "Public can read merchants" on public.merchants;
+create policy "Public can read merchants"
   on public.merchants for select
   to anon
   using (true);
@@ -68,7 +69,8 @@ create policy "Merchants can read their tags"
   using (merchant_id = auth.uid());
 
 drop policy if exists "Public can resolve NFC tags" on public.tags;
-create policy "Public can resolve NFC tags"
+drop policy if exists "Public can read tags" on public.tags;
+create policy "Public can read tags"
   on public.tags for select
   to anon
   using (true);
@@ -87,10 +89,11 @@ create policy "Merchants can read their receipts"
   using (merchant_id = auth.uid());
 
 drop policy if exists "Public can read latest receipts" on public.receipts;
-create policy "Public can read latest receipts"
+drop policy if exists "Public can read receipts" on public.receipts;
+create policy "Public can read receipts"
   on public.receipts for select
   to anon
-  using (is_latest = true);
+  using (true);
 
 drop policy if exists "Merchants can create their receipts" on public.receipts;
 create policy "Merchants can create their receipts"
