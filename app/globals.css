@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .field {
+    @apply h-11 rounded-[10px] border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/15;
+  }
+}
+
 :root {
   color-scheme: light;
   --bg: #f5f2ed;

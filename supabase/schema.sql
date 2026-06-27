@@ -34,6 +34,64 @@ create table if not exists public.receipts (
   constraint receipts_items_array check (jsonb_typeof(items) = 'array')
 );
 
+create table if not exists public.categories (
+  id uuid primary key default gen_random_uuid(),
+  merchant_id uuid not null references public.merchants(id) on delete cascade,
+  name text not null,
+  sort_order int not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.menu_items (
+  id uuid primary key default gen_random_uuid(),
+  merchant_id uuid not null references public.merchants(id) on delete cascade,
+  category_id uuid not null references public.categories(id) on delete cascade,
+  name text not null,
+  price numeric(10, 2) not null,
+  description text,
+  image_url text,
+  is_available boolean not null default true,
+  sort_order int not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.modifier_groups (
+  id uuid primary key default gen_random_uuid(),
+  merchant_id uuid not null references public.merchants(id) on delete cascade,
+  name text not null,
+  required boolean not null default false,
+  multi_select boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.modifiers (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references public.modifier_groups(id) on delete cascade,
+  name text not null,
+  price_delta numeric(10, 2) not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.item_modifier_groups (
+  item_id uuid not null references public.menu_items(id) on delete cascade,
+  group_id uuid not null references public.modifier_groups(id) on delete cascade,
+  primary key (item_id, group_id)
+);
+
+create table if not exists public.orders (
+  id uuid primary key default gen_random_uuid(),
+  merchant_id uuid not null references public.merchants(id) on delete cascade,
+  tag_id uuid not null references public.tags(id) on delete restrict,
+  items jsonb not null,
+  subtotal numeric(10, 2) not null,
+  vat numeric(10, 2) not null,
+  total numeric(10, 2) not null,
+  payment_method text not null check (payment_method in ('card', 'cash')),
+  status text not null check (status in ('open', 'completed', 'cancelled')),
+  created_at timestamptz not null default now(),
+  constraint orders_items_array check (jsonb_typeof(items) = 'array')
+);
+
 create unique index if not exists receipts_one_latest_per_tag
   on public.receipts(tag_id)
   where is_latest = true;
@@ -41,13 +99,28 @@ create unique index if not exists receipts_one_latest_per_tag
 create index if not exists tags_merchant_id_idx on public.tags(merchant_id);
 create index if not exists receipts_merchant_id_created_at_idx on public.receipts(merchant_id, created_at desc);
 create index if not exists receipts_tag_latest_idx on public.receipts(tag_id, is_latest);
+create index if not exists categories_merchant_sort_idx on public.categories(merchant_id, sort_order);
+create index if not exists menu_items_merchant_category_sort_idx on public.menu_items(merchant_id, category_id, sort_order);
+create index if not exists modifier_groups_merchant_idx on public.modifier_groups(merchant_id);
+create index if not exists modifiers_group_idx on public.modifiers(group_id);
+create index if not exists orders_merchant_created_at_idx on public.orders(merchant_id, created_at desc);
 
 alter table public.merchants enable row level security;
 alter table public.tags enable row level security;
 alter table public.receipts enable row level security;
+alter table public.categories enable row level security;
+alter table public.menu_items enable row level security;
+alter table public.modifier_groups enable row level security;
+alter table public.modifiers enable row level security;
+alter table public.item_modifier_groups enable row level security;
+alter table public.orders enable row level security;
 
 insert into storage.buckets (id, name, public)
 values ('logos', 'logos', true)
+on conflict (id) do update set public = true;
+
+insert into storage.buckets (id, name, public)
+values ('menu-images', 'menu-images', true)
 on conflict (id) do update set public = true;
 
 drop policy if exists "Merchants can read their own profile" on public.merchants;
@@ -123,6 +196,72 @@ create policy "Merchants can update their receipts"
   using (merchant_id = auth.uid())
   with check (merchant_id = auth.uid());
 
+drop policy if exists "Merchant owns categories" on public.categories;
+create policy "Merchant owns categories"
+  on public.categories for all
+  to authenticated
+  using (merchant_id = auth.uid())
+  with check (merchant_id = auth.uid());
+
+drop policy if exists "Merchant owns menu_items" on public.menu_items;
+create policy "Merchant owns menu_items"
+  on public.menu_items for all
+  to authenticated
+  using (merchant_id = auth.uid())
+  with check (merchant_id = auth.uid());
+
+drop policy if exists "Merchant owns modifier_groups" on public.modifier_groups;
+create policy "Merchant owns modifier_groups"
+  on public.modifier_groups for all
+  to authenticated
+  using (merchant_id = auth.uid())
+  with check (merchant_id = auth.uid());
+
+drop policy if exists "Merchant owns modifiers" on public.modifiers;
+create policy "Merchant owns modifiers"
+  on public.modifiers for all
+  to authenticated
+  using (
+    exists (
+      select 1 from public.modifier_groups
+      where modifier_groups.id = modifiers.group_id
+      and modifier_groups.merchant_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.modifier_groups
+      where modifier_groups.id = modifiers.group_id
+      and modifier_groups.merchant_id = auth.uid()
+    )
+  );
+
+drop policy if exists "Merchant owns item_modifier_groups" on public.item_modifier_groups;
+create policy "Merchant owns item_modifier_groups"
+  on public.item_modifier_groups for all
+  to authenticated
+  using (
+    exists (
+      select 1 from public.menu_items
+      where menu_items.id = item_modifier_groups.item_id
+      and menu_items.merchant_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.menu_items
+      where menu_items.id = item_modifier_groups.item_id
+      and menu_items.merchant_id = auth.uid()
+    )
+  );
+
+drop policy if exists "Merchant owns orders" on public.orders;
+create policy "Merchant owns orders"
+  on public.orders for all
+  to authenticated
+  using (merchant_id = auth.uid())
+  with check (merchant_id = auth.uid());
+
 drop policy if exists "Public can read logos" on storage.objects;
 create policy "Public can read logos"
   on storage.objects for select
@@ -157,6 +296,43 @@ create policy "Merchants can delete their logos"
   to authenticated
   using (
     bucket_id = 'logos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "Public can read menu images" on storage.objects;
+create policy "Public can read menu images"
+  on storage.objects for select
+  to anon, authenticated
+  using (bucket_id = 'menu-images');
+
+drop policy if exists "Merchants can upload menu images" on storage.objects;
+create policy "Merchants can upload menu images"
+  on storage.objects for insert
+  to authenticated
+  with check (
+    bucket_id = 'menu-images'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "Merchants can update menu images" on storage.objects;
+create policy "Merchants can update menu images"
+  on storage.objects for update
+  to authenticated
+  using (
+    bucket_id = 'menu-images'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  )
+  with check (
+    bucket_id = 'menu-images'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "Merchants can delete menu images" on storage.objects;
+create policy "Merchants can delete menu images"
+  on storage.objects for delete
+  to authenticated
+  using (
+    bucket_id = 'menu-images'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 

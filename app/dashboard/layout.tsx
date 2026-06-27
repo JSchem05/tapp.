@@ -1,7 +1,7 @@
 import { logout } from "@/app/dashboard/actions";
 import { HeaderClock, OpenClosedToggle } from "@/components/dashboard-status";
 import { getAuthedMerchant } from "@/lib/auth";
-import { LogOut, ReceiptText, Settings } from "lucide-react";
+import { LogOut, MenuSquare, ReceiptText, Settings } from "lucide-react";
 import Link from "next/link";
 
 export default async function DashboardLayout({
@@ -33,6 +33,20 @@ export default async function DashboardLayout({
 
           <nav className="flex items-center gap-2 lg:justify-end">
             <OpenClosedToggle />
+            <Link
+              href="/pos"
+              className="inline-flex h-9 items-center gap-2 rounded-[10px] bg-amber px-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-soft"
+            >
+              <ReceiptText className="h-4 w-4" />
+              POS
+            </Link>
+            <Link
+              href="/pos/menu"
+              className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-transparent bg-white px-3 text-sm font-semibold text-ink transition hover:bg-cream hover:text-amber"
+            >
+              <MenuSquare className="h-4 w-4" />
+              Menu
+            </Link>
             <Link
               href="/dashboard/settings"
               className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-transparent bg-white px-3 text-sm font-semibold text-ink transition hover:bg-cream hover:text-amber"
