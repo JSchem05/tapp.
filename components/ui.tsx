@@ -1,19 +1,23 @@
 import { cn } from "@/lib/utils";
-import type { ButtonHTMLAttributes, InputHTMLAttributes, SelectHTMLAttributes } from "react";
+import type {
+  ButtonHTMLAttributes,
+  HTMLAttributes,
+  InputHTMLAttributes,
+  SelectHTMLAttributes
+} from "react";
 
 export function Card({
   className,
-  children
-}: {
-  className?: string;
-  children: React.ReactNode;
-}) {
+  children,
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
         "glass-card p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-lift",
         className
       )}
+      {...props}
     >
       {children}
     </div>

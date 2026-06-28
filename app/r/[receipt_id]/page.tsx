@@ -1,7 +1,7 @@
 import { ReceiptView } from "@/components/receipt-view";
 import { Card } from "@/components/ui";
 import { createPublicClient } from "@/lib/supabase/public";
-import type { Merchant, Receipt } from "@/lib/types";
+import type { Receipt, ReceiptMerchantProfile } from "@/lib/types";
 import { getBaseUrl } from "@/lib/url";
 import { AlertTriangle, ReceiptText } from "lucide-react";
 
@@ -62,9 +62,9 @@ export default async function ReceiptPermalinkPage({
 
   const { data: merchant } = await supabase
     .from("merchants")
-    .select("name, logo_url")
+    .select("*")
     .eq("id", receipt.merchant_id)
-    .maybeSingle<Pick<Merchant, "name" | "logo_url">>();
+    .maybeSingle<Partial<ReceiptMerchantProfile>>();
 
   const merchantName = merchant?.name ?? "Merchant";
 
@@ -73,6 +73,7 @@ export default async function ReceiptPermalinkPage({
       <ReceiptView
         merchantName={merchantName}
         merchantLogoUrl={merchant?.logo_url ?? null}
+        merchantProfile={merchant}
         receipt={receipt}
         permalink={`${getBaseUrl()}/r/${receipt.id}`}
         banner={`This is a saved receipt from ${merchantName}`}
@@ -84,7 +85,7 @@ export default async function ReceiptPermalinkPage({
 function ReceiptShell({ children }: { children: React.ReactNode }) {
   return (
     <main className="min-h-screen bg-transparent px-4 py-5 sm:py-10">
-      <div className="mx-auto w-full max-w-md">{children}</div>
+      <div className="mx-auto w-full max-w-[480px]">{children}</div>
     </main>
   );
 }

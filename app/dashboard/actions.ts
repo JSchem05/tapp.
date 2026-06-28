@@ -45,7 +45,27 @@ export async function updateMerchantSettings(formData: FormData) {
 
   const { error } = await supabase
     .from("merchants")
-    .update({ name, logo_url: logoUrl })
+    .update({
+      name,
+      logo_url: logoUrl,
+      tagline: optionalText(formData, "tagline"),
+      phone: optionalText(formData, "phone"),
+      website: optionalText(formData, "website"),
+      instagram: normalizeInstagram(optionalText(formData, "instagram")),
+      address: optionalText(formData, "address"),
+      wifi_name: optionalText(formData, "wifi_name"),
+      wifi_password: optionalText(formData, "wifi_password"),
+      ad_headline: optionalText(formData, "ad_headline"),
+      ad_subtext: optionalText(formData, "ad_subtext"),
+      ad_cta_label: optionalText(formData, "ad_cta_label"),
+      ad_cta_url: optionalText(formData, "ad_cta_url"),
+      ad_bg_color: optionalText(formData, "ad_bg_color") ?? "#4F6EF7",
+      show_qr: checkboxOn(formData, "show_qr"),
+      show_wifi: checkboxOn(formData, "show_wifi"),
+      show_ad: checkboxOn(formData, "show_ad"),
+      show_social: checkboxOn(formData, "show_social"),
+      show_info: checkboxOn(formData, "show_info")
+    })
     .eq("id", merchant.id);
 
   if (error) {
@@ -53,6 +73,20 @@ export async function updateMerchantSettings(formData: FormData) {
   }
 
   redirect("/dashboard/settings?saved=1");
+}
+
+function optionalText(formData: FormData, key: string) {
+  const value = String(formData.get(key) ?? "").trim();
+  return value ? value : null;
+}
+
+function checkboxOn(formData: FormData, key: string) {
+  return formData.get(key) === "on";
+}
+
+function normalizeInstagram(value: string | null) {
+  if (!value) return null;
+  return value.replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/^@/, "").replace(/\/$/, "");
 }
 
 export async function createTag(formData: FormData) {

@@ -5,7 +5,19 @@ import { Card, Input, Label } from "@/components/ui";
 import { getAuthedMerchant } from "@/lib/auth";
 import type { Tag } from "@/lib/types";
 import { getBaseUrl } from "@/lib/url";
-import { AlertTriangle, Cable, Save, Store, Wifi } from "lucide-react";
+import {
+  AlertTriangle,
+  Cable,
+  Globe,
+  Instagram,
+  MapPin,
+  Megaphone,
+  Phone,
+  QrCode,
+  Save,
+  Store,
+  Wifi
+} from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +75,78 @@ export default async function SettingsPage({
             />
           </div>
           <SaveButton />
+        </Card>
+
+        <Card className="p-6">
+          <SectionHeader
+            icon={<QrCode className="h-5 w-5" />}
+            title="Receipt Page"
+            description="Configure the extra sections customers see below each receipt."
+          />
+
+          <div className="mt-6 space-y-6">
+            <SettingsGroup title="Merchant info">
+              <ToggleField
+                name="show_info"
+                label="Show merchant info"
+                defaultChecked={merchant.show_info ?? true}
+              />
+              <SettingInput name="tagline" label="Business tagline" defaultValue={merchant.tagline} placeholder="Fresh coffee, baked daily" />
+              <SettingInput name="phone" label="Phone number" defaultValue={merchant.phone} placeholder="+356 2123 4567" icon={<Phone className="h-4 w-4" />} />
+              <SettingInput name="website" label="Website" defaultValue={merchant.website} placeholder="https://example.com" icon={<Globe className="h-4 w-4" />} />
+              <SettingInput name="instagram" label="Instagram handle" defaultValue={merchant.instagram} placeholder="@cafename" icon={<Instagram className="h-4 w-4" />} />
+              <SettingInput name="address" label="Address" defaultValue={merchant.address} placeholder="123 Republic Street, Valletta" icon={<MapPin className="h-4 w-4" />} />
+            </SettingsGroup>
+
+            <SettingsGroup title="WiFi details">
+              <ToggleField
+                name="show_wifi"
+                label="Show WiFi details"
+                defaultChecked={merchant.show_wifi ?? false}
+              />
+              <SettingInput name="wifi_name" label="Network name" defaultValue={merchant.wifi_name} placeholder="Tapp Guest" />
+              <SettingInput name="wifi_password" label="Password" defaultValue={merchant.wifi_password} placeholder="coffee123" />
+            </SettingsGroup>
+
+            <SettingsGroup title="QR and sharing">
+              <ToggleField
+                name="show_qr"
+                label="Show QR code"
+                defaultChecked={merchant.show_qr ?? true}
+              />
+              <ToggleField
+                name="show_social"
+                label="Show social links"
+                defaultChecked={merchant.show_social ?? true}
+              />
+            </SettingsGroup>
+
+            <SettingsGroup title="Promotion banner">
+              <ToggleField
+                name="show_ad"
+                label="Show promotion banner"
+                defaultChecked={merchant.show_ad ?? false}
+              />
+              <SettingInput name="ad_headline" label="Headline" defaultValue={merchant.ad_headline} placeholder="Happy Hour 5-7pm" icon={<Megaphone className="h-4 w-4" />} />
+              <SettingInput name="ad_subtext" label="Subtext" defaultValue={merchant.ad_subtext} placeholder="2 cocktails for €12" />
+              <SettingInput name="ad_cta_label" label="Button label" defaultValue={merchant.ad_cta_label} placeholder="See menu" />
+              <SettingInput name="ad_cta_url" label="Button URL" defaultValue={merchant.ad_cta_url} placeholder="https://example.com/menu" />
+              <div className="space-y-2">
+                <Label>Banner color</Label>
+                <div className="flex items-center gap-3">
+                  <input
+                    name="ad_bg_color"
+                    type="color"
+                    defaultValue={merchant.ad_bg_color ?? "#4F6EF7"}
+                    className="h-11 w-16 rounded-[12px] border border-line bg-white/70 p-1 shadow-sm"
+                  />
+                  <span className="text-sm text-muted">Used as a soft tint on the customer receipt.</span>
+                </div>
+              </div>
+            </SettingsGroup>
+          </div>
+
+          <SaveButton label="Save changes" />
         </Card>
 
         {searchParams?.error ? (
@@ -162,11 +246,85 @@ function SectionHeader({
   );
 }
 
-function SaveButton() {
+function SettingsGroup({
+  title,
+  children
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-[18px] border border-line bg-white/45 p-4 backdrop-blur">
+      <h3 className="text-sm font-extrabold text-ink">{title}</h3>
+      <div className="mt-4 grid gap-4">{children}</div>
+    </section>
+  );
+}
+
+function SettingInput({
+  name,
+  label,
+  defaultValue,
+  placeholder,
+  icon
+}: {
+  name: string;
+  label: string;
+  defaultValue?: string | null;
+  placeholder?: string;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <div className="relative">
+        {icon ? (
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-amber">
+            {icon}
+          </span>
+        ) : null}
+        <Input
+          name={name}
+          defaultValue={defaultValue ?? ""}
+          placeholder={placeholder}
+          className={icon ? "pl-9" : undefined}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ToggleField({
+  name,
+  label,
+  defaultChecked
+}: {
+  name: string;
+  label: string;
+  defaultChecked: boolean;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-4 rounded-[16px] border border-line bg-white/60 px-4 py-3 text-sm font-bold text-ink shadow-sm backdrop-blur">
+      <span>{label}</span>
+      <span className="relative inline-flex h-7 w-12 shrink-0 items-center">
+        <input
+          name={name}
+          type="checkbox"
+          defaultChecked={defaultChecked}
+          className="peer sr-only"
+        />
+        <span className="absolute inset-0 rounded-full border border-line bg-white transition peer-checked:border-amber peer-checked:bg-amber" />
+        <span className="absolute left-1 h-5 w-5 rounded-full bg-muted/50 transition peer-checked:translate-x-5 peer-checked:bg-white" />
+      </span>
+    </label>
+  );
+}
+
+function SaveButton({ label = "Save section" }: { label?: string }) {
   return (
     <button className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-[12px] bg-amber px-4 text-sm font-extrabold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-clay hover:shadow-lift">
       <Save className="h-4 w-4" />
-      Save section
+      {label}
     </button>
   );
 }

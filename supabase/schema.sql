@@ -10,7 +10,24 @@ create table if not exists public.merchants (
 );
 
 alter table public.merchants
-  add column if not exists logo_url text;
+  add column if not exists logo_url text,
+  add column if not exists tagline text,
+  add column if not exists phone text,
+  add column if not exists website text,
+  add column if not exists instagram text,
+  add column if not exists address text,
+  add column if not exists wifi_name text,
+  add column if not exists wifi_password text,
+  add column if not exists ad_headline text,
+  add column if not exists ad_subtext text,
+  add column if not exists ad_cta_label text,
+  add column if not exists ad_cta_url text,
+  add column if not exists ad_bg_color text default '#4F6EF7',
+  add column if not exists show_qr boolean default true,
+  add column if not exists show_wifi boolean default false,
+  add column if not exists show_ad boolean default false,
+  add column if not exists show_social boolean default true,
+  add column if not exists show_info boolean default true;
 
 create table if not exists public.tags (
   id uuid primary key default gen_random_uuid(),

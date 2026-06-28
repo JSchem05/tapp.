@@ -12,8 +12,48 @@ export type Merchant = {
   email: string;
   slug: string;
   logo_url: string | null;
+  tagline: string | null;
+  phone: string | null;
+  website: string | null;
+  instagram: string | null;
+  address: string | null;
+  wifi_name: string | null;
+  wifi_password: string | null;
+  ad_headline: string | null;
+  ad_subtext: string | null;
+  ad_cta_label: string | null;
+  ad_cta_url: string | null;
+  ad_bg_color: string | null;
+  show_qr: boolean;
+  show_wifi: boolean;
+  show_ad: boolean;
+  show_social: boolean;
+  show_info: boolean;
   created_at: string;
 };
+
+export type ReceiptMerchantProfile = Pick<
+  Merchant,
+  | "name"
+  | "logo_url"
+  | "tagline"
+  | "phone"
+  | "website"
+  | "instagram"
+  | "address"
+  | "wifi_name"
+  | "wifi_password"
+  | "ad_headline"
+  | "ad_subtext"
+  | "ad_cta_label"
+  | "ad_cta_url"
+  | "ad_bg_color"
+  | "show_qr"
+  | "show_wifi"
+  | "show_ad"
+  | "show_social"
+  | "show_info"
+>;
 
 export type Tag = {
   id: string;

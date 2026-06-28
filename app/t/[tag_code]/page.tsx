@@ -1,14 +1,14 @@
 import { ReceiptView } from "@/components/receipt-view";
 import { Card } from "@/components/ui";
 import { createPublicClient } from "@/lib/supabase/public";
-import type { Merchant, Receipt, Tag } from "@/lib/types";
+import type { Receipt, ReceiptMerchantProfile, Tag } from "@/lib/types";
 import { getBaseUrl } from "@/lib/url";
 import { AlertTriangle, ReceiptText } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 type TagWithMerchant = Tag & {
-  merchants: Pick<Merchant, "name" | "logo_url"> | null;
+  merchants: Partial<ReceiptMerchantProfile> | null;
 };
 
 export default async function PublicReceiptPage({
@@ -50,7 +50,7 @@ export default async function PublicReceiptPage({
     status: tagStatus
   } = await supabase
     .from("tags")
-    .select("*, merchants(name)")
+    .select("*, merchants(*)")
     .ilike("tag_code", tagCode)
     .limit(1)
     .maybeSingle<TagWithMerchant>();
@@ -159,6 +159,7 @@ export default async function PublicReceiptPage({
         <ReceiptView
           merchantName={merchantName}
           merchantLogoUrl={logoUrl}
+          merchantProfile={tag.merchants}
           receipt={receipt}
           history={(history ?? []).filter((item) => item.id !== receipt.id)}
           permalink={`${baseUrl}/r/${receipt.id}`}
@@ -175,19 +176,8 @@ export default async function PublicReceiptPage({
 
 function PublicShell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-transparent px-4 py-5 sm:py-10">
-      <div className="mx-auto grid w-full max-w-5xl gap-8 md:grid-cols-[minmax(0,380px)_minmax(360px,440px)] md:items-start md:justify-center">
-        <div className="text-center md:sticky md:top-10 md:pt-10 md:text-left">
-          <div className="blue-gradient-mark mx-auto flex h-12 w-12 items-center justify-center rounded-[14px] text-xl font-extrabold text-white shadow-soft md:mx-0">
-            T
-          </div>
-          <p className="mt-4 text-4xl font-extrabold tracking-tight text-ink">Tapp.</p>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            NFC receipts for cafés, counters, and quick visits.
-          </p>
-        </div>
-        <div>{children}</div>
-      </div>
+    <main className="min-h-screen bg-transparent px-4 py-6 sm:py-10">
+      <div className="mx-auto w-full max-w-[480px]">{children}</div>
     </main>
   );
 }
