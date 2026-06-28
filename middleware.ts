@@ -3,7 +3,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseKey, getSupabaseUrl } from "@/lib/supabase/env";
 
 export async function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith("/t/")) {
+  const pathname = request.nextUrl.pathname;
+  const isProtectedRoute =
+    pathname.startsWith("/dashboard") || pathname.startsWith("/pos");
+
+  if (!isProtectedRoute) {
     return NextResponse.next();
   }
 
@@ -48,5 +52,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"]
+  matcher: ["/dashboard/:path*", "/pos/:path*"]
 };

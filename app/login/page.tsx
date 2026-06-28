@@ -1,6 +1,6 @@
 import { login } from "@/app/login/actions";
+import { LoginButton } from "@/app/login/login-button";
 import { Card, Input, Label } from "@/components/ui";
-import { ArrowRight } from "lucide-react";
 
 export default function LoginPage({
   searchParams
@@ -49,10 +49,7 @@ export default function LoginPage({
               </p>
             ) : null}
 
-            <button className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[12px] bg-amber px-4 text-sm font-bold text-white transition hover:bg-clay hover:shadow-[0_4px_16px_rgba(79,110,247,0.35)]">
-              Log in
-              <ArrowRight className="h-4 w-4" />
-            </button>
+            <LoginButton />
           </form>
         </Card>
       </div>
