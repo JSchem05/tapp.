@@ -16,7 +16,7 @@ export default function PublicReceiptError({
   }, [error]);
 
   return (
-    <main className="min-h-screen bg-cream px-4 py-5 sm:py-10">
+    <main className="min-h-screen bg-transparent px-4 py-5 sm:py-10">
       <div className="mx-auto w-full max-w-md">
         <div className="mb-5 text-center">
           <p className="text-3xl font-bold text-ink">Tapp.</p>

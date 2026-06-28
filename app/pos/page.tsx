@@ -94,9 +94,9 @@ export default async function PosPage() {
 
   if (!categories?.length || !items?.length) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-cream px-4">
-        <div className="max-w-md rounded-[28px] border border-line bg-white p-8 text-center shadow-soft">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber/15 text-amber">
+      <main className="flex min-h-screen items-center justify-center bg-transparent px-4">
+        <div className="glass-card max-w-md p-8 text-center">
+          <div className="blue-gradient-mark mx-auto flex h-16 w-16 items-center justify-center rounded-full text-white shadow-soft">
             <MenuSquare className="h-8 w-8" />
           </div>
           <h1 className="mt-5 text-3xl font-extrabold tracking-tight text-ink">
@@ -109,12 +109,12 @@ export default async function PosPage() {
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Link
               href="/pos/menu"
-              className="inline-flex h-12 items-center justify-center rounded-[10px] bg-ink px-4 text-sm font-extrabold text-white"
+              className="inline-flex h-12 items-center justify-center rounded-[12px] bg-ink px-4 text-sm font-extrabold text-white"
             >
               Go to Menu Builder
             </Link>
             <form action={loadSampleMenu}>
-              <button className="inline-flex h-12 w-full items-center justify-center rounded-[10px] bg-amber px-4 text-sm font-extrabold text-white">
+              <button className="inline-flex h-12 w-full items-center justify-center rounded-[12px] bg-amber px-4 text-sm font-extrabold text-white">
                 Load sample data
               </button>
             </form>
@@ -125,13 +125,13 @@ export default async function PosPage() {
   }
 
   return (
-    <main className="h-screen overflow-hidden bg-cream">
+    <main className="h-screen overflow-hidden bg-transparent">
       <div className="grid h-full grid-rows-[64px_1fr]">
-        <header className="flex h-16 items-center justify-between border-b border-line bg-white px-4">
+        <header className="flex h-16 items-center justify-between border-b border-line bg-white/75 px-4 shadow-sm backdrop-blur-[20px]">
           <div className="flex items-center gap-3">
             <Link
               href="/dashboard"
-              className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink hover:border-amber hover:text-amber"
+              className="inline-flex h-10 items-center gap-2 rounded-[12px] border border-line bg-white/60 px-3 text-sm font-bold text-amber backdrop-blur hover:bg-white"
             >
               <ArrowLeft className="h-4 w-4" />
               Dashboard
@@ -150,7 +150,7 @@ export default async function PosPage() {
           </div>
           <Link
             href="/pos/menu"
-            className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-ink px-3 text-sm font-bold text-white"
+            className="inline-flex h-10 items-center gap-2 rounded-[12px] bg-ink px-3 text-sm font-bold text-white shadow-soft"
           >
             <ReceiptText className="h-4 w-4" />
             Menu Builder

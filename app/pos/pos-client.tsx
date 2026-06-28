@@ -188,13 +188,13 @@ export function PosClient({
 
   return (
     <div className="grid min-h-0 grid-cols-1 gap-4 p-4 lg:grid-cols-[minmax(0,3fr)_minmax(360px,2fr)]">
-      <section className="flex min-h-0 flex-col rounded-[28px] border border-line bg-white p-4 shadow-soft">
+      <section className="glass-card flex min-h-0 flex-col rounded-[28px] p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-extrabold text-ink">{merchantName}</h1>
             <p className="text-sm text-muted">Staff: Front counter</p>
           </div>
-          <div className="flex h-12 min-w-[220px] items-center rounded-full bg-cream px-4">
+          <div className="flex h-12 min-w-[220px] items-center rounded-full border border-line bg-white/60 px-4 shadow-sm backdrop-blur focus-within:border-amber focus-within:ring-4 focus-within:ring-amber/15">
             <Search className="h-5 w-5 text-muted" />
             <input
               value={query}
@@ -214,7 +214,7 @@ export function PosClient({
               className={`h-12 shrink-0 rounded-full px-5 text-base font-extrabold ${
                 activeCategory === category.id
                   ? "bg-amber text-white shadow-soft"
-                  : "border border-line bg-white text-ink"
+                  : "border border-line bg-white/60 text-ink backdrop-blur hover:bg-white"
               }`}
             >
               {category.name}
@@ -228,7 +228,7 @@ export function PosClient({
               key={item.id}
               type="button"
               onClick={() => openItem(item)}
-              className={`relative min-h-[138px] overflow-hidden rounded-[20px] border border-line bg-white p-4 text-left shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift ${
+              className={`glass-card relative min-h-[140px] overflow-hidden rounded-[16px] p-4 text-left transition hover:-translate-y-0.5 hover:shadow-lift ${
                 !item.is_available ? "opacity-45" : ""
               }`}
             >
@@ -246,7 +246,7 @@ export function PosClient({
               {item.description ? (
                 <p className="mt-3 line-clamp-2 text-sm text-muted">{item.description}</p>
               ) : null}
-              <span className="absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full bg-ink text-white">
+              <span className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-amber text-white shadow-[0_4px_16px_rgba(79,110,247,0.35)]">
                 <Plus className="h-5 w-5" />
               </span>
               {!item.is_available ? (
@@ -259,12 +259,10 @@ export function PosClient({
         </div>
       </section>
 
-      <aside className="flex min-h-0 flex-col rounded-[28px] border border-line bg-white p-5 shadow-soft">
+      <aside className="glass-panel flex min-h-0 flex-col rounded-[28px] border-l border-line p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.24em] text-amber">
-              Order Details
-            </p>
+            <p className="text-sm font-semibold text-muted">Order details</p>
             <h2 className="mt-1 text-2xl font-extrabold text-ink">
               Current order
             </h2>
@@ -272,20 +270,20 @@ export function PosClient({
           <button
             type="button"
             onClick={resetOrder}
-            className="h-10 rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink hover:border-amber hover:text-amber"
+            className="h-10 rounded-[12px] border border-line bg-white/60 px-3 text-sm font-bold text-amber backdrop-blur hover:bg-white"
           >
             Reset Order
           </button>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 rounded-full bg-cream p-1">
+        <div className="mt-4 grid grid-cols-2 rounded-full border border-line bg-white/45 p-1 backdrop-blur">
           {(["dine-in", "takeaway"] as const).map((mode) => (
             <button
               key={mode}
               type="button"
               onClick={() => setServiceMode(mode)}
               className={`h-11 rounded-full text-sm font-extrabold ${
-                serviceMode === mode ? "bg-white text-ink shadow-soft" : "text-muted"
+                serviceMode === mode ? "bg-amber text-white shadow-soft" : "text-muted"
               }`}
             >
               {mode === "dine-in" ? "Dine In" : "Takeaway"}
@@ -295,7 +293,7 @@ export function PosClient({
 
         <div className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
           {orderItems.length === 0 ? (
-            <div className="rounded-[20px] border border-dashed border-line bg-cream p-8 text-center">
+            <div className="rounded-[20px] border border-dashed border-line bg-white/45 p-8 text-center backdrop-blur">
               <p className="text-lg font-extrabold text-ink">No items yet</p>
               <p className="mt-1 text-sm text-muted">Tap menu items to build an order.</p>
             </div>
@@ -306,7 +304,7 @@ export function PosClient({
                   item.modifiers.reduce((sum, modifier) => sum + modifier.price_delta, 0)) *
                 item.qty;
               return (
-                <div key={`${item.item_id}-${index}`} className="rounded-[18px] border border-line bg-white p-4 shadow-sm">
+                <div key={`${item.item_id}-${index}`} className="rounded-[18px] border border-line bg-white/60 p-4 shadow-sm backdrop-blur">
                   <div className="flex justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-extrabold text-ink">{item.name}</p>
@@ -350,7 +348,7 @@ export function PosClient({
               {formatCurrency(totals.total)}
             </span>
           </div>
-          <button type="button" className="mt-3 flex h-12 w-full items-center justify-between rounded-[10px] border border-line bg-white px-4 text-sm font-bold text-muted">
+          <button type="button" className="mt-3 flex h-12 w-full items-center justify-between rounded-[12px] border border-line bg-white/60 px-4 text-sm font-bold text-muted backdrop-blur">
             Add Discount <ChevronRight className="h-4 w-4" />
           </button>
           <label className="mt-3 block text-sm font-bold text-muted">
@@ -358,7 +356,7 @@ export function PosClient({
             <select
               value={selectedTagId}
               onChange={(event) => setSelectedTagId(event.target.value)}
-              className="mt-2 h-12 w-full rounded-[10px] border border-line bg-white px-3 text-base font-bold text-ink"
+              className="mt-2 h-12 w-full rounded-[12px] border border-line bg-white/70 px-3 text-base font-bold text-ink outline-none backdrop-blur focus:border-amber focus:ring-4 focus:ring-amber/15"
             >
               {tags.map((tag) => (
                 <option key={tag.id} value={tag.id}>
@@ -373,7 +371,7 @@ export function PosClient({
               type="button"
               disabled={orderItems.length === 0 || isPending}
               onClick={() => submitOrder("open")}
-              className="h-14 rounded-[10px] border border-line bg-white text-base font-extrabold text-ink disabled:opacity-40"
+              className="h-14 rounded-[12px] border border-line bg-white/60 text-base font-extrabold text-amber backdrop-blur disabled:opacity-40"
             >
               Open Bill
             </button>
@@ -381,7 +379,7 @@ export function PosClient({
               type="button"
               disabled={orderItems.length === 0 || isPending}
               onClick={() => setPaymentOpen(true)}
-              className="h-14 rounded-[10px] bg-amber text-base font-extrabold text-white shadow-soft disabled:opacity-40"
+              className="h-14 rounded-[12px] bg-amber text-base font-extrabold text-white shadow-soft transition hover:bg-clay hover:shadow-[0_4px_16px_rgba(79,110,247,0.35)] disabled:opacity-40"
             >
               Pay Now
             </button>
@@ -412,7 +410,7 @@ export function PosClient({
 
       {successUrl ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-4 backdrop-blur-sm">
-          <div className="animate-tapp-fade rounded-[28px] bg-white p-8 text-center shadow-lift">
+          <div className="glass-panel animate-tapp-fade rounded-[28px] p-8 text-center shadow-lift">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-50 text-green-600">
               <Check className="h-8 w-8" />
             </div>
@@ -440,7 +438,7 @@ function ItemImage({ item }: { item: PosMenuItem }) {
   }
 
   return (
-    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-amber/15 text-xl font-extrabold text-amber">
+    <div className="blue-gradient-mark flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-xl font-extrabold text-white shadow-soft">
       {item.name[0]?.toUpperCase()}
     </div>
   );
@@ -491,13 +489,13 @@ function ModifierModal({
 
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-ink/30 p-0 backdrop-blur-sm md:items-center md:p-4">
-      <div className="animate-tapp-fade max-h-[92vh] w-full overflow-y-auto rounded-t-[28px] bg-white p-6 shadow-lift md:max-w-xl md:rounded-[28px]">
+      <div className="glass-panel animate-tapp-fade max-h-[92vh] w-full overflow-y-auto rounded-t-[28px] p-6 shadow-lift md:max-w-xl md:rounded-[28px]">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-2xl font-extrabold text-ink">{state.item.name}</h2>
             <p className="text-sm text-muted">{formatCurrency(Number(state.item.price))} base</p>
           </div>
-          <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full bg-cream">
+          <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-white/60">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -519,7 +517,7 @@ function ModifierModal({
                       className={`min-h-12 rounded-full border px-4 text-sm font-extrabold ${
                         selected
                           ? "border-amber bg-amber text-white"
-                          : "border-line bg-white text-ink"
+                          : "border-line bg-white/60 text-ink backdrop-blur"
                       }`}
                     >
                       {modifier.name}
@@ -536,7 +534,7 @@ function ModifierModal({
           value={state.comment}
           onChange={(event) => setState({ ...state, comment: event.target.value })}
           placeholder="Add a note for the kitchen..."
-          className="mt-5 min-h-24 w-full rounded-[10px] border border-line px-3 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/15"
+          className="mt-5 min-h-24 w-full rounded-[12px] border border-line bg-white/70 px-3 py-3 text-sm outline-none backdrop-blur focus:border-amber focus:ring-4 focus:ring-amber/15"
         />
 
         <div className="mt-5 flex items-center justify-between gap-4">
@@ -585,17 +583,15 @@ function PaymentModal({
 }) {
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-ink/30 p-4 backdrop-blur-sm">
-      <div className="animate-tapp-fade w-full max-w-md rounded-[28px] bg-white p-6 shadow-lift">
+      <div className="glass-panel animate-tapp-fade w-full max-w-md rounded-[24px] p-6 shadow-lift">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-amber">
-              Payment
-            </p>
+            <p className="text-sm font-semibold text-amber">Payment</p>
             <h2 className="mt-2 text-4xl font-extrabold text-ink">
               {formatCurrency(total)}
             </h2>
           </div>
-          <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full bg-cream">
+          <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-white/60">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -607,8 +603,8 @@ function PaymentModal({
               onClick={() => setPayment({ ...payment, method })}
               className={`h-20 rounded-[20px] border text-xl font-extrabold ${
                 payment.method === method
-                  ? "border-amber bg-amber text-white"
-                  : "border-line bg-white text-ink"
+                  ? "border-amber bg-[#EEF1FF] text-amber"
+                  : "border-line bg-white/60 text-ink backdrop-blur"
               }`}
             >
               {method === "cash" ? "Cash" : "Card"}
@@ -623,14 +619,14 @@ function PaymentModal({
               onChange={(event) => setPayment({ ...payment, tendered: event.target.value })}
               inputMode="decimal"
               placeholder="0.00"
-              className="mt-2 h-12 w-full rounded-[10px] border border-line px-3 text-lg font-bold outline-none focus:border-amber focus:ring-4 focus:ring-amber/15"
+              className="mt-2 h-12 w-full rounded-[12px] border border-line bg-white/70 px-3 text-lg font-bold outline-none backdrop-blur focus:border-amber focus:ring-4 focus:ring-amber/15"
             />
             <p className="mt-2 text-sm font-bold text-muted">
               Change: <span className="text-ink">{formatCurrency(Math.max(0, change))}</span>
             </p>
           </div>
         ) : (
-          <p className="mt-5 rounded-[14px] bg-cream px-4 py-3 text-sm text-muted">
+          <p className="mt-5 rounded-[14px] border border-line bg-white/45 px-4 py-3 text-sm text-muted">
             Card confirmation only for now. Stripe Terminal can connect here later.
           </p>
         )}
@@ -638,7 +634,7 @@ function PaymentModal({
           type="button"
           disabled={isPending}
           onClick={onConfirm}
-          className="mt-6 h-14 w-full rounded-[10px] bg-ink text-base font-extrabold text-white disabled:opacity-50"
+          className="mt-6 h-14 w-full rounded-[12px] bg-amber text-base font-extrabold text-white shadow-soft transition hover:bg-clay disabled:opacity-50"
         >
           Confirm Payment
         </button>

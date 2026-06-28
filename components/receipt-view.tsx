@@ -86,7 +86,7 @@ export function ReceiptView({
   return (
     <div className="animate-tapp-fade space-y-4">
       {banner ? (
-        <div className="rounded-full border border-line bg-white px-4 py-2 text-center text-sm font-semibold text-muted shadow-soft">
+        <div className="glass-card rounded-full px-4 py-2 text-center text-sm font-semibold text-muted">
           {banner}
         </div>
       ) : null}
@@ -156,7 +156,7 @@ export function ReceiptCard({
   return (
     <Card
       className={cn(
-        "overflow-hidden rounded-[20px] border-line bg-white",
+        "overflow-hidden",
         compact ? "p-5" : "p-6",
         className
       )}
@@ -205,7 +205,7 @@ export function ReceiptCard({
 
       <div className="mt-5 flex items-center justify-between">
         <span className="text-sm font-medium text-muted">Payment method</span>
-        <span className="rounded-full bg-amber/15 px-3 py-1 text-sm font-extrabold text-amber">
+        <span className="rounded-full border border-line bg-[#EEF1FF] px-3 py-1 text-sm font-extrabold text-amber">
           {receipt.payment_method}
         </span>
       </div>
@@ -228,10 +228,10 @@ function PreviousVisits({
         <h2 className="text-lg font-extrabold text-ink">Previous visits</h2>
         <p className="text-sm text-muted">Last 10 receipts from this counter.</p>
       </div>
-      <div className="overflow-hidden rounded-[20px] border border-line bg-white shadow-soft">
+      <div className="glass-card overflow-hidden">
         {receipts.map((receipt) => (
           <details key={receipt.id} className="group border-b border-line last:border-b-0">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 transition hover:bg-[#FFF9F1]">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 transition hover:bg-[#EEF1FF]/70">
               <span className="min-w-0">
                 <span className="block truncate text-sm font-semibold text-ink">
                   {formatDateTime(receipt.created_at)}
@@ -275,7 +275,7 @@ function LogoMark({
       <img
         src={logoUrl}
         alt={`${merchantName} logo`}
-        className="h-14 w-14 rounded-full border border-line object-cover"
+        className="h-14 w-14 rounded-full border border-white/90 object-cover shadow-soft"
       />
     );
   }
@@ -288,7 +288,7 @@ function LogoMark({
     .join("") || "T";
 
   return (
-    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-amber/15 text-lg font-extrabold text-amber">
+    <div className="blue-gradient-mark flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-lg font-extrabold text-white shadow-soft">
       {initials}
     </div>
   );
@@ -316,7 +316,7 @@ function ActionButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-full border border-line bg-white px-3 text-xs font-bold text-ink shadow-soft transition hover:-translate-y-0.5 hover:border-amber hover:bg-[#FFF9F1] hover:text-amber hover:shadow-lift sm:text-sm"
+      className="flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-full border border-line bg-white/60 px-3 text-xs font-bold text-amber shadow-soft backdrop-blur transition hover:-translate-y-0.5 hover:border-amber hover:bg-white hover:shadow-lift sm:text-sm"
     >
       {icon}
       <span className="truncate">{children}</span>

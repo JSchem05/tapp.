@@ -79,9 +79,7 @@ export function ReceiptForm({
 
       <Card className="space-y-6 p-6">
         <div>
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.24em] text-amber">
-            New Receipt
-          </p>
+          <p className="text-sm font-semibold text-amber">New receipt</p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-ink">
             Build the customer receipt
           </h1>
@@ -107,7 +105,7 @@ export function ReceiptForm({
                 className={`rounded-full border px-4 py-2 text-sm font-bold transition ${
                   selectedTagId === tag.id
                     ? "border-amber bg-amber text-white shadow-soft"
-                    : "border-line bg-white text-ink shadow-sm hover:-translate-y-0.5 hover:border-amber hover:bg-[#FFF9F1] hover:shadow-soft"
+                    : "border-line bg-white/60 text-amber shadow-sm backdrop-blur hover:-translate-y-0.5 hover:bg-white hover:shadow-soft"
                 }`}
               >
                 {tag.label}
@@ -123,7 +121,7 @@ export function ReceiptForm({
             {items.map((item, index) => (
               <div
                 key={item.key}
-                className="grid gap-3 rounded-[18px] border border-line bg-white p-3 shadow-sm sm:grid-cols-[1fr_132px_140px_44px]"
+                className="grid gap-3 rounded-[18px] border border-line bg-white/60 p-3 shadow-sm backdrop-blur sm:grid-cols-[1fr_132px_140px_44px]"
               >
                 <div className="space-y-2">
                   <Label className="text-xs">Item name</Label>
@@ -138,7 +136,7 @@ export function ReceiptForm({
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs">Qty</Label>
-                  <div className="flex h-11 items-center rounded-[10px] border border-line bg-white">
+                  <div className="flex h-11 items-center rounded-[12px] border border-line bg-white/70 backdrop-blur">
                     <button
                       type="button"
                       onClick={() =>
@@ -167,7 +165,7 @@ export function ReceiptForm({
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs">Price</Label>
-                  <div className="flex h-11 items-center rounded-[10px] border border-line bg-white shadow-sm focus-within:border-amber focus-within:ring-4 focus-within:ring-amber/15">
+                  <div className="flex h-11 items-center rounded-[12px] border border-line bg-white/70 shadow-sm backdrop-blur focus-within:border-amber focus-within:ring-4 focus-within:ring-amber/15">
                     <span className="pl-3 text-sm font-bold text-muted">€</span>
                     <input
                       type="number"
@@ -200,7 +198,7 @@ export function ReceiptForm({
           <button
             type="button"
             onClick={addItem}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-[14px] border border-dashed border-line bg-white text-sm font-extrabold text-ink transition hover:-translate-y-0.5 hover:border-amber hover:bg-[#FFF9F1] hover:text-amber hover:shadow-soft"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-[14px] border border-dashed border-line bg-white/60 text-sm font-extrabold text-amber backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:shadow-soft"
           >
             <Plus className="h-4 w-4" />
             Add item
@@ -218,7 +216,7 @@ export function ReceiptForm({
                 className={`rounded-full border px-4 py-2 text-sm font-bold transition ${
                   paymentMethod === method
                     ? "border-amber bg-amber text-white shadow-soft"
-                    : "border-line bg-white text-ink shadow-sm hover:-translate-y-0.5 hover:border-amber hover:bg-[#FFF9F1] hover:shadow-soft"
+                    : "border-line bg-white/60 text-amber shadow-sm backdrop-blur hover:-translate-y-0.5 hover:bg-white hover:shadow-soft"
                 }`}
               >
                 {method}
@@ -227,13 +225,13 @@ export function ReceiptForm({
           </div>
         </div>
 
-        <div className="rounded-2xl bg-cream p-4">
+        <div className="rounded-2xl border border-line bg-white/45 p-4 backdrop-blur">
           <SummaryRow label="Subtotal" value={formatCurrency(totals.subtotal)} />
           <SummaryRow label="VAT 18%" value={formatCurrency(totals.vat)} />
           <SummaryRow label="Total" value={formatCurrency(totals.total)} strong />
         </div>
 
-        <button className="flex h-14 w-full items-center justify-center gap-2 rounded-[10px] bg-ink px-4 text-base font-extrabold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-black hover:shadow-lift">
+        <button className="flex h-14 w-full items-center justify-center gap-2 rounded-[12px] bg-amber px-4 text-base font-extrabold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-clay hover:shadow-[0_4px_16px_rgba(79,110,247,0.35)]">
           <ReceiptText className="h-5 w-5" />
           Create Receipt
         </button>
@@ -241,9 +239,7 @@ export function ReceiptForm({
 
       <aside className="h-fit space-y-3 lg:sticky lg:top-20">
         <div>
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.24em] text-amber">
-            Preview
-          </p>
+          <p className="text-sm font-semibold text-amber">Preview</p>
           <h2 className="mt-1 text-xl font-extrabold text-ink">
             What your customer sees
           </h2>

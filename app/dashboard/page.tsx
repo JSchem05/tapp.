@@ -67,9 +67,7 @@ export default async function DashboardPage({
       <section className="space-y-6">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.24em] text-muted">
-              NFC counters
-            </p>
+            <p className="text-sm font-semibold text-muted">NFC counters</p>
             <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-ink">
               Counter control
             </h1>
@@ -92,7 +90,7 @@ export default async function DashboardPage({
               <Card
                 key={tag.id}
                 className={`relative h-full overflow-hidden p-5 ${
-                  active ? "border-amber shadow-lift" : ""
+                  active ? "border-amber bg-[#EEF1FF]/40 shadow-lift" : ""
                 }`}
               >
                 {active ? (
@@ -122,13 +120,13 @@ export default async function DashboardPage({
                   <Link
                     href={`/dashboard?tag=${tag.id}`}
                     scroll={false}
-                    className="inline-flex h-10 flex-1 items-center justify-center rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink transition hover:-translate-y-0.5 hover:border-amber hover:bg-[#FFF9F1] hover:text-amber hover:shadow-soft"
+                    className="inline-flex h-10 flex-1 items-center justify-center rounded-[12px] border border-line bg-white/60 px-3 text-sm font-bold text-amber backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:shadow-soft"
                   >
                     Select
                   </Link>
                   <Link
                     href={`/dashboard/receipt/new?tag=${tag.id}`}
-                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-[10px] bg-amber px-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lift"
+                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-[12px] bg-amber px-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-clay hover:shadow-[0_4px_16px_rgba(79,110,247,0.35)]"
                   >
                     New Receipt
                     <ArrowUpRight className="h-4 w-4" />
@@ -139,7 +137,7 @@ export default async function DashboardPage({
           })}
         </div>
 
-        <Card className="border-dashed bg-white/70 p-0 hover:bg-[#FFF9F1]">
+        <Card className="border-dashed p-0 hover:bg-[#EEF1FF]/70">
           <details>
             <summary className="flex cursor-pointer list-none flex-col items-center justify-center gap-3 p-8 text-center">
               <span className="flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-amber bg-amber/10 text-amber">
@@ -159,7 +157,7 @@ export default async function DashboardPage({
                 <Label>Tag code</Label>
                 <Input name="tag_code" placeholder="GARDEN01" />
               </div>
-              <button className="self-end rounded-[10px] bg-amber px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lift">
+              <button className="self-end rounded-[12px] bg-amber px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-clay hover:shadow-lift">
                 Add
               </button>
             </form>
@@ -171,9 +169,7 @@ export default async function DashboardPage({
         <Card className="p-6">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.24em] text-amber">
-                Live receipt
-              </p>
+              <p className="text-sm font-semibold text-amber">Live receipt</p>
               <h2 className="mt-1 text-2xl font-extrabold text-ink">
                 {selectedTag?.label ?? "No counter"}
               </h2>
@@ -181,7 +177,7 @@ export default async function DashboardPage({
             {selectedTag ? (
               <Link
                 href={`/dashboard/receipt/new?tag=${selectedTag.id}`}
-                className="inline-flex h-9 items-center gap-2 rounded-[10px] bg-ink px-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-black hover:shadow-lift"
+                className="inline-flex h-9 items-center gap-2 rounded-[12px] bg-ink px-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lift"
               >
                 <Plus className="h-4 w-4" />
                 New
@@ -197,7 +193,7 @@ export default async function DashboardPage({
               className="shadow-none hover:shadow-none"
             />
           ) : (
-            <div className="rounded-[20px] border border-dashed border-line bg-[#FAF8F4] px-6 py-12 text-center">
+            <div className="rounded-[20px] border border-dashed border-line bg-white/45 px-6 py-12 text-center backdrop-blur">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white text-amber shadow-soft">
                 <CircleDashed className="h-7 w-7" />
               </div>
@@ -209,7 +205,7 @@ export default async function DashboardPage({
           )}
         </Card>
 
-        <Card className="bg-transparent p-0 shadow-none hover:shadow-none">
+        <Card className="p-0">
           <div className="border-b border-line p-5">
             <h2 className="text-xl font-extrabold text-ink">Receipt history</h2>
             <p className="text-sm text-muted">
@@ -221,7 +217,7 @@ export default async function DashboardPage({
               {(selectedHistory ?? []).map((receipt) => (
                 <div
                   key={receipt.id}
-                  className="grid gap-3 rounded-[18px] border border-line bg-white px-4 py-3 shadow-soft transition hover:-translate-y-0.5 hover:bg-[#FFF9F1] hover:shadow-lift sm:grid-cols-[1fr_auto]"
+                  className="grid gap-3 rounded-[18px] border border-line bg-white/60 px-4 py-3 shadow-soft backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:shadow-lift sm:grid-cols-[1fr_auto]"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold text-ink">
@@ -234,7 +230,7 @@ export default async function DashboardPage({
                   <div className="flex items-center gap-2">
                     <Link
                       href={`/r/${receipt.id}`}
-                      className="inline-flex h-8 items-center gap-1 rounded-full border border-line bg-white px-3 text-xs font-bold text-ink hover:border-amber hover:text-amber"
+                      className="inline-flex h-8 items-center gap-1 rounded-full border border-line bg-white/70 px-3 text-xs font-bold text-amber hover:bg-white"
                     >
                       View
                       <ChevronRight className="h-4 w-4" />

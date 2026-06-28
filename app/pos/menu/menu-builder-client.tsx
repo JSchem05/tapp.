@@ -74,31 +74,29 @@ export function MenuBuilderClient({
   );
 
   return (
-    <main className="min-h-screen bg-cream px-4 py-5 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-transparent px-4 py-5 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
-        <header className="mb-6 flex flex-col gap-4 rounded-[20px] border border-line bg-white p-4 shadow-soft md:flex-row md:items-center md:justify-between">
+        <header className="glass-card mb-6 flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <Link
               href="/pos"
-              className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-line bg-white text-ink hover:border-amber hover:text-amber"
+              className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-line bg-white/60 text-amber backdrop-blur hover:bg-white"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.24em] text-amber">
-                Menu Builder
-              </p>
+              <p className="text-sm font-semibold text-amber">Menu builder</p>
               <h1 className="text-2xl font-extrabold text-ink">{merchantName}</h1>
             </div>
           </div>
-          <div className="grid grid-cols-3 rounded-full bg-cream p-1">
+          <div className="grid grid-cols-3 rounded-full border border-line bg-white/45 p-1 backdrop-blur">
             {(["categories", "items", "modifiers"] as Tab[]).map((candidate) => (
               <button
                 key={candidate}
                 type="button"
                 onClick={() => setTab(candidate)}
                 className={`h-10 rounded-full px-4 text-sm font-extrabold capitalize ${
-                  tab === candidate ? "bg-white text-ink shadow-soft" : "text-muted"
+                  tab === candidate ? "bg-amber text-white shadow-soft" : "text-muted"
                 }`}
               >
                 {candidate}
@@ -163,9 +161,9 @@ function CategoriesTab({
             <input
               name="name"
               placeholder="Add Category"
-              className="h-11 rounded-[10px] border border-line px-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/15"
+              className="h-11 rounded-[12px] border border-line bg-white/70 px-3 text-sm outline-none backdrop-blur focus:border-amber focus:ring-4 focus:ring-amber/15"
             />
-            <button className="h-11 rounded-[10px] bg-amber px-4 text-sm font-extrabold text-white">
+            <button className="h-11 rounded-[12px] bg-amber px-4 text-sm font-extrabold text-white">
               Add
             </button>
           </form>
@@ -205,11 +203,11 @@ function SortableCategoryRow({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className="grid gap-3 rounded-[20px] border border-line bg-white p-4 shadow-soft md:grid-cols-[auto_1fr_auto_auto]"
+      className="glass-card grid gap-3 p-4 md:grid-cols-[auto_1fr_auto_auto]"
     >
       <button
         type="button"
-        className="flex h-11 w-11 items-center justify-center rounded-[10px] bg-cream text-muted"
+        className="flex h-11 w-11 items-center justify-center rounded-[12px] border border-line bg-white/60 text-muted backdrop-blur"
         {...attributes}
         {...listeners}
       >
@@ -221,9 +219,9 @@ function SortableCategoryRow({
           name="name"
           value={name}
           onChange={(event) => setName(event.target.value)}
-          className="h-11 min-w-0 flex-1 rounded-[10px] border border-line px-3 font-bold outline-none focus:border-amber focus:ring-4 focus:ring-amber/15"
+          className="h-11 min-w-0 flex-1 rounded-[12px] border border-line bg-white/70 px-3 font-bold outline-none backdrop-blur focus:border-amber focus:ring-4 focus:ring-amber/15"
         />
-        <button className="h-11 rounded-[10px] border border-line px-3 text-sm font-bold text-ink">
+        <button className="h-11 rounded-[12px] border border-line bg-white/60 px-3 text-sm font-bold text-amber backdrop-blur">
           Save
         </button>
       </form>
@@ -263,7 +261,7 @@ function ItemsTab({
       <select
         value={filter}
         onChange={(event) => setFilter(event.target.value)}
-        className="h-11 rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink"
+        className="h-11 rounded-[12px] border border-line bg-white/70 px-3 text-sm font-bold text-ink outline-none backdrop-blur focus:border-amber focus:ring-4 focus:ring-amber/15"
       >
         <option value="all">All categories</option>
         {categories.map((category) => (
@@ -276,7 +274,7 @@ function ItemsTab({
         {filtered.map((item) => (
           <div
             key={item.id}
-            className="grid gap-4 rounded-[20px] border border-line bg-white p-4 shadow-soft md:grid-cols-[64px_1fr_auto_auto_auto]"
+            className="glass-card grid gap-4 p-4 md:grid-cols-[64px_1fr_auto_auto_auto]"
           >
             <ItemThumb item={item} />
             <div>
@@ -291,7 +289,7 @@ function ItemsTab({
               <input type="hidden" name="is_available" value={String(item.is_available)} />
               <button
                 className={`h-9 rounded-full px-3 text-xs font-extrabold ${
-                  item.is_available ? "bg-amber text-white" : "bg-cream text-muted"
+                  item.is_available ? "bg-[#ECFDF5] text-green-700" : "bg-white/50 text-muted"
                 }`}
               >
                 {item.is_available ? "Available" : "Hidden"}
@@ -344,7 +342,7 @@ function ItemEditor({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-ink px-3 text-sm font-bold text-white"
+        className="inline-flex h-10 items-center justify-center gap-2 rounded-[12px] bg-ink px-3 text-sm font-bold text-white"
       >
         {item ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
         {item ? "Edit" : "Add Item"}
@@ -353,7 +351,7 @@ function ItemEditor({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-4 backdrop-blur-sm">
           <form
             action={saveMenuItem}
-            className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-[28px] bg-white p-6 shadow-lift"
+            className="glass-panel max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-[28px] p-6 shadow-lift"
           >
             <input type="hidden" name="id" value={item?.id ?? ""} />
             <input type="hidden" name="existing_image_url" value={item?.image_url ?? ""} />
@@ -364,7 +362,7 @@ function ItemEditor({
             />
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-bold uppercase tracking-[0.2em] text-amber">
+                <p className="text-sm font-semibold text-amber">
                   {item ? "Edit Item" : "Add Item"}
                 </p>
                 <h2 className="mt-1 text-2xl font-extrabold text-ink">
@@ -389,16 +387,16 @@ function ItemEditor({
                 </select>
               </Field>
               <Field label="Price">
-                <div className="flex h-11 items-center rounded-[10px] border border-line">
+                <div className="flex h-11 items-center rounded-[12px] border border-line bg-white/70 backdrop-blur">
                   <span className="pl-3 font-bold text-muted">€</span>
                   <input name="price" value={state.price} onChange={(event) => setState({ ...state, price: event.target.value })} className="min-w-0 flex-1 px-2 outline-none" required />
                 </div>
               </Field>
               <Field label="Description">
-                <textarea name="description" value={state.description} onChange={(event) => setState({ ...state, description: event.target.value })} className="min-h-24 rounded-[10px] border border-line px-3 py-2 outline-none focus:border-amber focus:ring-4 focus:ring-amber/15" />
+                <textarea name="description" value={state.description} onChange={(event) => setState({ ...state, description: event.target.value })} className="min-h-24 rounded-[12px] border border-line bg-white/70 px-3 py-2 outline-none backdrop-blur focus:border-amber focus:ring-4 focus:ring-amber/15" />
               </Field>
               <Field label="Image">
-                <label className="flex cursor-pointer items-center gap-3 rounded-[16px] border border-dashed border-line bg-cream p-4">
+                <label className="flex cursor-pointer items-center gap-3 rounded-[16px] border border-dashed border-line bg-white/45 p-4 backdrop-blur hover:bg-white/70">
                   <ImagePlus className="h-5 w-5 text-amber" />
                   <span className="text-sm font-bold text-muted">Upload item image</span>
                   <input name="image" type="file" accept="image/*" className="sr-only" />
@@ -431,7 +429,7 @@ function ItemEditor({
                 </div>
               </Field>
             </div>
-            <button className="mt-6 h-12 w-full rounded-[10px] bg-amber text-sm font-extrabold text-white">
+            <button className="mt-6 h-12 w-full rounded-[12px] bg-amber text-sm font-extrabold text-white">
               Save item
             </button>
           </form>
@@ -457,7 +455,7 @@ function ModifiersTab({
       />
       <div className="space-y-3">
         {groups.map((group) => (
-          <details key={group.id} className="rounded-[20px] border border-line bg-white p-4 shadow-soft">
+          <details key={group.id} className="glass-card p-4">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
               <div>
                 <p className="text-lg font-extrabold text-ink">{group.name}</p>
@@ -499,7 +497,7 @@ function ModifierGroupForm({ group }: { group?: ModifierGroup }) {
   });
 
   return (
-    <form action={saveModifierGroup} className="grid gap-2 rounded-[16px] bg-cream p-3 md:grid-cols-[1fr_auto_auto_auto]">
+    <form action={saveModifierGroup} className="grid gap-2 rounded-[16px] border border-line bg-white/45 p-3 backdrop-blur md:grid-cols-[1fr_auto_auto_auto]">
       <input type="hidden" name="id" value={group?.id ?? ""} />
       <input name="name" value={state.name} onChange={(event) => setState({ ...state, name: event.target.value })} placeholder="Group name" className="field" />
       <label className="flex items-center gap-2 text-sm font-bold">
@@ -510,7 +508,7 @@ function ModifierGroupForm({ group }: { group?: ModifierGroup }) {
         <input type="checkbox" name="multi_select" checked={state.multi_select} onChange={() => setState({ ...state, multi_select: !state.multi_select })} />
         Multi
       </label>
-      <button className="rounded-[10px] bg-ink px-3 py-2 text-sm font-bold text-white">
+      <button className="rounded-[12px] bg-ink px-3 py-2 text-sm font-bold text-white">
         {group ? "Save" : "Add Group"}
       </button>
     </form>
@@ -535,7 +533,7 @@ function ModifierForm({
       <input type="hidden" name="group_id" value={groupId} />
       <input name="name" value={state.name} onChange={(event) => setState({ ...state, name: event.target.value })} placeholder="Modifier name" className="field" />
       <input name="price_delta" value={state.price_delta} onChange={(event) => setState({ ...state, price_delta: event.target.value })} className="field" />
-      <button className="rounded-[10px] bg-amber px-3 py-2 text-sm font-bold text-white">
+      <button className="rounded-[12px] bg-amber px-3 py-2 text-sm font-bold text-white">
         {modifier ? "Save" : "Add"}
       </button>
       {modifier ? (
@@ -557,11 +555,9 @@ function PanelHeader({
   action: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col justify-between gap-4 rounded-[20px] border border-line bg-white p-5 shadow-soft md:flex-row md:items-center">
+    <div className="glass-card flex flex-col justify-between gap-4 p-5 md:flex-row md:items-center">
       <div>
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.24em] text-amber">
-          {title}
-        </p>
+        <p className="text-sm font-semibold text-amber">{title}</p>
         <h2 className="mt-1 text-2xl font-extrabold text-ink">{title}</h2>
         <p className="text-sm text-muted">{description}</p>
       </div>
@@ -590,7 +586,7 @@ function ItemThumb({ item }: { item: MenuItem }) {
     return <img src={item.image_url} alt={item.name} className="h-16 w-16 rounded-2xl object-cover" />;
   }
   return (
-    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber/15 text-xl font-extrabold text-amber">
+    <div className="blue-gradient-mark flex h-16 w-16 items-center justify-center rounded-2xl text-xl font-extrabold text-white shadow-soft">
       {item.name[0]?.toUpperCase()}
     </div>
   );
@@ -598,7 +594,7 @@ function ItemThumb({ item }: { item: MenuItem }) {
 
 function Badge({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-full bg-cream px-3 py-1 text-xs font-extrabold text-muted">
+    <span className="rounded-full border border-line bg-white/60 px-3 py-1 text-xs font-extrabold text-amber backdrop-blur">
       {children}
     </span>
   );

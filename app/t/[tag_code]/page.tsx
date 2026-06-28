@@ -175,10 +175,13 @@ export default async function PublicReceiptPage({
 
 function PublicShell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-cream px-4 py-5 sm:py-10">
+    <main className="min-h-screen bg-transparent px-4 py-5 sm:py-10">
       <div className="mx-auto grid w-full max-w-5xl gap-8 md:grid-cols-[minmax(0,380px)_minmax(360px,440px)] md:items-start md:justify-center">
         <div className="text-center md:sticky md:top-10 md:pt-10 md:text-left">
-          <p className="text-4xl font-extrabold tracking-tight text-ink">tapp.</p>
+          <div className="blue-gradient-mark mx-auto flex h-12 w-12 items-center justify-center rounded-[14px] text-xl font-extrabold text-white shadow-soft md:mx-0">
+            T
+          </div>
+          <p className="mt-4 text-4xl font-extrabold tracking-tight text-ink">Tapp.</p>
           <p className="mt-2 text-sm leading-6 text-muted">
             NFC receipts for cafés, counters, and quick visits.
           </p>
@@ -192,7 +195,7 @@ function PublicShell({ children }: { children: React.ReactNode }) {
 function EmptyReceipt({ title, body }: { title: string; body: string }) {
   return (
     <Card className="py-12 text-center">
-      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber/15 text-amber">
+      <div className="blue-gradient-mark mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-soft">
         <ReceiptText className="h-7 w-7" />
       </div>
       <h1 className="text-xl font-bold text-ink">{title}</h1>

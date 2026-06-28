@@ -12,7 +12,7 @@ export function ReceiptSuccess({
   url: string;
 }) {
   return (
-    <div className="rounded-2xl border border-line bg-white p-6 text-center shadow-soft">
+    <div className="glass-card rounded-2xl p-6 text-center">
       <div className="mx-auto flex h-16 w-16 animate-tapp-fade items-center justify-center rounded-full bg-green-50 text-green-600">
         <Check className="h-8 w-8" />
       </div>
@@ -23,11 +23,11 @@ export function ReceiptSuccess({
         The NFC puck now opens this receipt. Customers can tap or scan the QR.
       </p>
 
-      <div className="mx-auto mt-6 inline-flex rounded-2xl border border-line bg-white p-3 shadow-soft">
+      <div className="mx-auto mt-6 inline-flex rounded-2xl border border-line bg-white/70 p-3 shadow-soft backdrop-blur">
         <QRCodeSVG value={url} size={176} level="M" />
       </div>
 
-      <p className="mt-4 break-all rounded-2xl bg-cream px-4 py-3 text-sm font-medium text-muted">
+      <p className="mt-4 break-all rounded-2xl border border-line bg-white/45 px-4 py-3 text-sm font-medium text-muted">
         {url}
       </p>
 
@@ -35,7 +35,7 @@ export function ReceiptSuccess({
         <CopyButton value={url} />
         <Link
           href="/dashboard/receipt/new"
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-[10px] border border-ink bg-white px-4 text-sm font-bold text-ink transition hover:border-amber hover:text-amber"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-[12px] border border-line bg-white/60 px-4 text-sm font-bold text-amber backdrop-blur transition hover:bg-white"
         >
           <Plus className="h-4 w-4" />
           Create another

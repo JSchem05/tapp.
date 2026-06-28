@@ -27,9 +27,7 @@ export default async function SettingsPage({
   return (
     <div className="animate-tapp-fade mx-auto max-w-[600px] space-y-5">
       <div>
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.24em] text-muted">
-          Settings
-        </p>
+        <p className="text-sm font-semibold text-muted">Settings</p>
         <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-ink">
           Merchant profile
         </h1>
@@ -91,7 +89,7 @@ export default async function SettingsPage({
             return (
               <div
                 key={tag.id}
-                className="rounded-[18px] border border-line bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#FFF9F1] hover:shadow-soft"
+                className="rounded-[18px] border border-line bg-white/60 p-4 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:shadow-soft"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -100,7 +98,7 @@ export default async function SettingsPage({
                   </div>
                   <CopyButton value={url} />
                 </div>
-                <p className="mt-3 break-all rounded-[14px] bg-cream px-3 py-2 text-sm text-muted">
+                <p className="mt-3 break-all rounded-[14px] border border-line bg-white/45 px-3 py-2 text-sm text-muted">
                   {url}
                 </p>
               </div>
@@ -151,7 +149,7 @@ function SectionHeader({
     <div className="flex items-start gap-3">
       <div
         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-          tone === "danger" ? "bg-red-100 text-red-700" : "bg-amber/15 text-amber"
+          tone === "danger" ? "bg-red-100 text-red-700" : "bg-[#EEF1FF] text-amber"
         }`}
       >
         {icon}
@@ -166,7 +164,7 @@ function SectionHeader({
 
 function SaveButton() {
   return (
-    <button className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-[10px] bg-amber px-4 text-sm font-extrabold text-white shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift">
+    <button className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-[12px] bg-amber px-4 text-sm font-extrabold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-clay hover:shadow-lift">
       <Save className="h-4 w-4" />
       Save section
     </button>

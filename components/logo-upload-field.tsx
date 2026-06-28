@@ -18,8 +18,8 @@ export function LogoUploadField({
   return (
     <div className="space-y-3">
       <Label>Business logo</Label>
-      <label className="flex cursor-pointer flex-col items-center gap-4 rounded-[20px] border border-dashed border-line bg-[#FAF8F4] p-6 text-center transition hover:border-amber hover:bg-[#FFF9F1] sm:flex-row sm:text-left">
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-line bg-cream text-amber">
+      <label className="flex cursor-pointer flex-col items-center gap-4 rounded-[20px] border border-dashed border-line bg-white/45 p-6 text-center backdrop-blur transition hover:border-amber hover:bg-white/70 sm:flex-row sm:text-left">
+        <div className="blue-gradient-mark flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/90 text-white shadow-soft">
           {preview ? (
             <img
               src={preview}
