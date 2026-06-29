@@ -11,7 +11,7 @@ export default function LoginPage({
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <div className="blue-gradient-mark mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-2xl font-extrabold text-white shadow-soft">
+          <div className="solid-mark mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-2xl font-extrabold text-white shadow-soft">
             T
           </div>
           <h1 className="text-4xl font-bold tracking-tight text-ink">Tapp.</h1>

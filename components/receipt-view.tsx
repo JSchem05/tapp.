@@ -114,7 +114,7 @@ export function ReceiptView({
     <div className="animate-tapp-fade space-y-3">
       {banner ? (
         <ReceiptSection delay={0}>
-          <div className="glass-card rounded-full px-4 py-2 text-center text-sm font-semibold text-muted">
+          <div className="panel-card rounded-full px-4 py-2 text-center text-sm font-semibold text-muted">
           {banner}
           </div>
         </ReceiptSection>
@@ -178,9 +178,9 @@ export function ReceiptView({
           href="https://tapp.mt"
           target="_blank"
           rel="noreferrer"
-          className="no-print flex items-center justify-center gap-2 text-center text-[11px] font-medium text-muted/70 transition hover:text-amber"
+          className="no-print flex items-center justify-center gap-2 text-center text-[11px] font-medium text-muted/70 transition hover:text-ink"
         >
-          <span className="blue-gradient-mark flex h-5 w-5 items-center justify-center rounded-md text-[10px] font-extrabold text-white">
+          <span className="solid-mark flex h-5 w-5 items-center justify-center rounded-md text-[10px] font-extrabold text-white">
             T
           </span>
           Powered by Tapp.
@@ -252,9 +252,9 @@ function MerchantInfoSection({
                 href={pill.href}
                 target={pill.external ? "_blank" : undefined}
                 rel={pill.external ? "noreferrer" : undefined}
-                className="inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border border-line bg-white/60 px-3 py-1 text-xs font-bold text-ink shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:text-amber hover:shadow-soft"
+                className="inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1 text-xs font-bold text-ink shadow-sm transition hover:bg-[#FAFAFA] hover:shadow-soft"
               >
-                <span className="text-amber">{pill.icon}</span>
+                <span className="text-muted">{pill.icon}</span>
                 <span className="truncate">{pill.label}</span>
               </a>
             ))}
@@ -288,22 +288,22 @@ function WifiSection({
 
   return (
     <ReceiptSection delay={delay}>
-      <Card className="border-[rgba(79,110,247,0.2)] bg-[rgba(79,110,247,0.06)] p-5">
+      <Card className="border-line bg-white p-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EEF1FF] text-amber">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F0F0F0] text-ink">
               <Wifi className="h-4 w-4" />
             </span>
             <p className="text-sm font-extrabold text-ink">Free WiFi</p>
           </div>
-          <span className="min-w-0 truncate rounded-full border border-line bg-[#EEF1FF] px-3 py-1 text-xs font-extrabold text-amber">
+          <span className="min-w-0 truncate rounded-full border border-line bg-[#F0F0F0] px-3 py-1 text-xs font-extrabold text-ink">
             {profile.wifi_name}
           </span>
         </div>
         {profile.wifi_password ? (
-          <div className="mt-4 flex flex-col gap-3 rounded-[16px] border border-line bg-white/55 p-3 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-4 flex flex-col gap-3 rounded-[16px] border border-line bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-2">
-              <Lock className="h-4 w-4 shrink-0 text-amber" />
+              <Lock className="h-4 w-4 shrink-0 text-muted" />
               <span className="truncate text-sm font-semibold text-ink">
                 {profile.wifi_password}
               </span>
@@ -311,7 +311,7 @@ function WifiSection({
             <button
               type="button"
               onClick={copyPassword}
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-line bg-white/70 px-3 text-xs font-extrabold text-amber shadow-sm transition hover:bg-white"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-line bg-white px-3 text-xs font-extrabold text-ink shadow-sm transition hover:bg-[#FAFAFA]"
             >
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               {copied ? "Copied!" : "Tap to copy"}
@@ -346,16 +346,16 @@ function QrSection({
       <Card className="p-5 text-center">
         <h2 className="text-sm font-extrabold text-ink">Save this receipt</h2>
         <p className="mt-1 text-xs text-muted">Scan to open on another device</p>
-        <div className="mx-auto mt-4 inline-flex rounded-[20px] border border-line bg-white/75 p-3 shadow-soft backdrop-blur">
+        <div className="mx-auto mt-4 inline-flex rounded-[20px] border border-line bg-white p-3 shadow-soft">
           <QRCodeSVG value={url} size={140} level="M" />
         </div>
         <button
           type="button"
           onClick={copyUrl}
-          className="mx-auto mt-4 flex max-w-full items-center justify-center gap-2 rounded-full border border-line bg-white/60 px-3 py-2 text-[11px] font-semibold text-muted shadow-sm backdrop-blur transition hover:bg-white hover:text-amber"
+          className="mx-auto mt-4 flex max-w-full items-center justify-center gap-2 rounded-full border border-line bg-white px-3 py-2 text-[11px] font-semibold text-muted shadow-sm transition hover:bg-[#FAFAFA] hover:text-ink"
         >
           <span className="truncate">{url}</span>
-          <Copy className="h-3.5 w-3.5 shrink-0 text-amber" />
+          <Copy className="h-3.5 w-3.5 shrink-0 text-ink" />
         </button>
       </Card>
     </ReceiptSection>
@@ -371,7 +371,7 @@ function PromotionSection({
 }) {
   if (!profile.show_ad || !profile.ad_headline) return null;
 
-  const color = normalizeHexColor(profile.ad_bg_color ?? "#4F6EF7");
+  const color = normalizeHexColor(profile.ad_bg_color ?? "#111111");
   const ctaHref = normalizeExternalUrl(profile.ad_cta_url ?? "");
 
   return (
@@ -397,7 +397,7 @@ function PromotionSection({
               href={ctaHref}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-10 items-center justify-center rounded-[12px] bg-amber px-4 text-sm font-extrabold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-clay"
+              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-ink px-4 text-sm font-extrabold text-white shadow-soft transition hover:bg-clay"
             >
               {profile.ad_cta_label}
             </a>
@@ -475,7 +475,7 @@ export function ReceiptCard({
 
       <div className="mt-5 flex items-center justify-between">
         <span className="text-sm font-medium text-muted">Payment method</span>
-        <span className="rounded-full border border-line bg-[#EEF1FF] px-3 py-1 text-sm font-extrabold text-amber">
+        <span className="rounded-full border border-line bg-[#F0F0F0] px-3 py-1 text-sm font-extrabold text-ink">
           {receipt.payment_method}
         </span>
       </div>
@@ -498,10 +498,10 @@ function PreviousVisits({
         <h2 className="text-lg font-extrabold text-ink">Previous visits</h2>
         <p className="text-sm text-muted">Last 10 receipts from this counter.</p>
       </div>
-      <div className="glass-card overflow-hidden">
+      <div className="panel-card overflow-hidden">
         {receipts.map((receipt) => (
           <details key={receipt.id} className="group border-b border-line last:border-b-0">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 transition hover:bg-[#EEF1FF]/70">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 transition hover:bg-[#FAFAFA]">
               <span className="min-w-0">
                 <span className="block truncate text-sm font-semibold text-ink">
                   {formatDateTime(receipt.created_at)}
@@ -570,7 +570,7 @@ function LogoMark({
   return (
     <div
       className={cn(
-        "blue-gradient-mark flex shrink-0 items-center justify-center rounded-full font-extrabold text-white shadow-soft",
+        "solid-mark flex shrink-0 items-center justify-center rounded-full font-extrabold text-white shadow-soft",
         classes
       )}
     >
@@ -642,15 +642,15 @@ function domainLabel(value: string) {
 }
 
 function normalizeHexColor(value: string) {
-  return /^#[0-9a-f]{6}$/i.test(value) ? value : "#4F6EF7";
+  return /^#[0-9a-f]{6}$/i.test(value) ? value : "#111111";
 }
 
 function hexToRgba(hex: string, alpha: number) {
   const value = normalizeHexColor(hex).slice(1);
   const red = Number.parseInt(value.slice(0, 2), 16);
   const green = Number.parseInt(value.slice(2, 4), 16);
-  const blue = Number.parseInt(value.slice(4, 6), 16);
-  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+  const finalChannel = Number.parseInt(value.slice(4, 6), 16);
+  return `rgba(${red}, ${green}, ${finalChannel}, ${alpha})`;
 }
 
 function ReceiptRow({ label, value }: { label: string; value: string }) {
@@ -675,7 +675,7 @@ function ActionButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-full border border-line bg-white/60 px-3 text-xs font-bold text-amber shadow-soft backdrop-blur transition hover:-translate-y-0.5 hover:border-amber hover:bg-white hover:shadow-lift sm:text-sm"
+      className="flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-full border border-line bg-white px-3 text-xs font-bold text-ink shadow-soft transition hover:border-ink hover:bg-[#FAFAFA] hover:shadow-lift sm:text-sm"
     >
       {icon}
       <span className="truncate">{children}</span>

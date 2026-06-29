@@ -59,7 +59,7 @@ export async function updateMerchantSettings(formData: FormData) {
       ad_subtext: optionalText(formData, "ad_subtext"),
       ad_cta_label: optionalText(formData, "ad_cta_label"),
       ad_cta_url: optionalText(formData, "ad_cta_url"),
-      ad_bg_color: optionalText(formData, "ad_bg_color") ?? "#4F6EF7",
+      ad_bg_color: optionalText(formData, "ad_bg_color") ?? "#111111",
       show_qr: checkboxOn(formData, "show_qr"),
       show_wifi: checkboxOn(formData, "show_wifi"),
       show_ad: checkboxOn(formData, "show_ad"),

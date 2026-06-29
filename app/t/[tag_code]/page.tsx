@@ -185,7 +185,7 @@ function PublicShell({ children }: { children: React.ReactNode }) {
 function EmptyReceipt({ title, body }: { title: string; body: string }) {
   return (
     <Card className="py-12 text-center">
-      <div className="blue-gradient-mark mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-soft">
+      <div className="solid-mark mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-soft">
         <ReceiptText className="h-7 w-7" />
       </div>
       <h1 className="text-xl font-bold text-ink">{title}</h1>

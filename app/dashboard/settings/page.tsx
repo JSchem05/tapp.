@@ -137,8 +137,8 @@ export default async function SettingsPage({
                   <input
                     name="ad_bg_color"
                     type="color"
-                    defaultValue={merchant.ad_bg_color ?? "#4F6EF7"}
-                    className="h-11 w-16 rounded-[12px] border border-line bg-white/70 p-1 shadow-sm"
+                    defaultValue={merchant.ad_bg_color ?? "#111111"}
+                    className="h-11 w-16 rounded-[10px] border border-line bg-white p-1 shadow-sm"
                   />
                   <span className="text-sm text-muted">Used as a soft tint on the customer receipt.</span>
                 </div>
@@ -173,7 +173,7 @@ export default async function SettingsPage({
             return (
               <div
                 key={tag.id}
-                className="rounded-[18px] border border-line bg-white/60 p-4 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:shadow-soft"
+                className="rounded-[16px] border border-line bg-white p-4 shadow-sm transition hover:bg-[#FAFAFA] hover:shadow-soft"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -182,7 +182,7 @@ export default async function SettingsPage({
                   </div>
                   <CopyButton value={url} />
                 </div>
-                <p className="mt-3 break-all rounded-[14px] border border-line bg-white/45 px-3 py-2 text-sm text-muted">
+                  <p className="mt-3 break-all rounded-[10px] border border-line bg-[#FAFAFA] px-3 py-2 text-sm text-muted">
                   {url}
                 </p>
               </div>
@@ -233,7 +233,7 @@ function SectionHeader({
     <div className="flex items-start gap-3">
       <div
         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-          tone === "danger" ? "bg-red-100 text-red-700" : "bg-[#EEF1FF] text-amber"
+          tone === "danger" ? "bg-red-100 text-red-700" : "bg-[#F0F0F0] text-ink"
         }`}
       >
         {icon}
@@ -254,7 +254,7 @@ function SettingsGroup({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[18px] border border-line bg-white/45 p-4 backdrop-blur">
+    <section className="rounded-[16px] border border-line bg-white p-4">
       <h3 className="text-sm font-extrabold text-ink">{title}</h3>
       <div className="mt-4 grid gap-4">{children}</div>
     </section>
@@ -279,7 +279,7 @@ function SettingInput({
       <Label>{label}</Label>
       <div className="relative">
         {icon ? (
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-amber">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">
             {icon}
           </span>
         ) : null}
@@ -304,7 +304,7 @@ function ToggleField({
   defaultChecked: boolean;
 }) {
   return (
-    <label className="flex items-center justify-between gap-4 rounded-[16px] border border-line bg-white/60 px-4 py-3 text-sm font-bold text-ink shadow-sm backdrop-blur">
+    <label className="flex items-center justify-between gap-4 rounded-[16px] border border-line bg-white px-4 py-3 text-sm font-bold text-ink shadow-sm">
       <span>{label}</span>
       <span className="relative inline-flex h-7 w-12 shrink-0 items-center">
         <input
@@ -313,7 +313,7 @@ function ToggleField({
           defaultChecked={defaultChecked}
           className="peer sr-only"
         />
-        <span className="absolute inset-0 rounded-full border border-line bg-white transition peer-checked:border-amber peer-checked:bg-amber" />
+        <span className="absolute inset-0 rounded-full border border-line bg-white transition peer-checked:border-ink peer-checked:bg-ink" />
         <span className="absolute left-1 h-5 w-5 rounded-full bg-muted/50 transition peer-checked:translate-x-5 peer-checked:bg-white" />
       </span>
     </label>
@@ -322,7 +322,7 @@ function ToggleField({
 
 function SaveButton({ label = "Save section" }: { label?: string }) {
   return (
-    <button className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-[12px] bg-amber px-4 text-sm font-extrabold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-clay hover:shadow-lift">
+    <button className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-[10px] bg-ink px-4 text-sm font-extrabold text-white shadow-soft transition hover:bg-clay hover:shadow-lift">
       <Save className="h-4 w-4" />
       {label}
     </button>

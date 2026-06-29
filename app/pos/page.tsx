@@ -91,12 +91,32 @@ export default async function PosPage() {
     ...item,
     modifierGroups: itemGroupMap.get(item.id) ?? []
   }));
+  const uniqueCategories: Category[] = [];
+  const categoryIdByName = new Map<string, string>();
+  for (const category of categories ?? []) {
+    const key = category.name.trim().toLowerCase();
+    const existingId = categoryIdByName.get(key);
+    if (!existingId) {
+      uniqueCategories.push(category);
+      categoryIdByName.set(key, category.id);
+    }
+  }
+  const categoryRemap = new Map(
+    (categories ?? []).map((category) => [
+      category.id,
+      categoryIdByName.get(category.name.trim().toLowerCase()) ?? category.id
+    ])
+  );
+  const dedupedMenuItems = menuItems.map((item) => ({
+    ...item,
+    category_id: categoryRemap.get(item.category_id) ?? item.category_id
+  }));
 
   if (!categories?.length || !items?.length) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-transparent px-4">
-        <div className="glass-card max-w-md p-8 text-center">
-          <div className="blue-gradient-mark mx-auto flex h-16 w-16 items-center justify-center rounded-full text-white shadow-soft">
+      <main className="flex min-h-screen items-center justify-center bg-cream px-4">
+        <div className="max-w-md rounded-[16px] bg-white p-8 text-center shadow-soft">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-ink text-white shadow-soft">
             <MenuSquare className="h-8 w-8" />
           </div>
           <h1 className="mt-5 text-3xl font-extrabold tracking-tight text-ink">
@@ -114,7 +134,7 @@ export default async function PosPage() {
               Go to Menu Builder
             </Link>
             <form action={loadSampleMenu}>
-              <button className="inline-flex h-12 w-full items-center justify-center rounded-[12px] bg-amber px-4 text-sm font-extrabold text-white">
+              <button className="inline-flex h-12 w-full items-center justify-center rounded-[10px] bg-ink px-4 text-sm font-extrabold text-white">
                 Load sample data
               </button>
             </form>
@@ -125,13 +145,13 @@ export default async function PosPage() {
   }
 
   return (
-    <main className="h-screen overflow-hidden bg-transparent">
-      <div className="grid h-full grid-rows-[64px_1fr]">
-        <header className="flex h-16 items-center justify-between border-b border-line bg-white/75 px-4 shadow-sm backdrop-blur-[20px]">
+    <main className="h-screen overflow-hidden bg-cream">
+      <div className="grid h-full grid-rows-[56px_1fr]">
+        <header className="flex h-14 items-center justify-between border-b border-line bg-white px-5">
           <div className="flex items-center gap-3">
             <Link
               href="/dashboard"
-              className="inline-flex h-10 items-center gap-2 rounded-[12px] border border-line bg-white/60 px-3 text-sm font-bold text-amber backdrop-blur hover:bg-white"
+              className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink hover:bg-[#FAFAFA]"
             >
               <ArrowLeft className="h-4 w-4" />
               Dashboard
@@ -148,19 +168,22 @@ export default async function PosPage() {
               timeZone: "Europe/Malta"
             }).format(new Date())}
           </div>
-          <Link
-            href="/pos/menu"
-            className="inline-flex h-10 items-center gap-2 rounded-[12px] bg-ink px-3 text-sm font-bold text-white shadow-soft"
-          >
-            <ReceiptText className="h-4 w-4" />
-            Menu Builder
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/pos/menu"
+              className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink hover:bg-[#FAFAFA]"
+            >
+              <ReceiptText className="h-4 w-4" />
+              Menu Builder
+            </Link>
+            <span className="text-sm font-semibold text-muted">Staff: Front counter</span>
+          </div>
         </header>
 
         <PosClient
           merchantName={merchant.name}
-          categories={categories}
-          items={menuItems}
+          categories={uniqueCategories}
+          items={dedupedMenuItems}
           tags={tags ?? []}
           baseUrl={getBaseUrl()}
         />

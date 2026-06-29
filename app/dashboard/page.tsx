@@ -1,16 +1,18 @@
-import { createTag, setReceiptLive } from "@/app/dashboard/actions";
-import { ReceiptCard } from "@/components/receipt-view";
-import { Card, Input, Label } from "@/components/ui";
+import { createTag } from "@/app/dashboard/actions";
+import { RevenueChart } from "@/app/dashboard/revenue-chart";
+import { Input, Label } from "@/components/ui";
 import { formatCurrency, formatDateTime } from "@/lib/money";
 import { getAuthedMerchant } from "@/lib/auth";
 import type { Receipt, Tag } from "@/lib/types";
 import {
   ArrowUpRight,
+  Bell,
+  CalendarDays,
   ChevronRight,
-  CircleDashed,
   Plus,
   ReceiptText,
-  Radio,
+  RefreshCcw,
+  Search,
   Wifi
 } from "lucide-react";
 import Link from "next/link";
@@ -20,11 +22,11 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage({
   searchParams
 }: {
-  searchParams?: { tag?: string; page?: string; error?: string; tag_added?: string };
+  searchParams?: { error?: string; tag_added?: string };
 }) {
   const { supabase, merchant } = await getAuthedMerchant();
 
-  const [{ data: tags }, { data: latestReceipts }] =
+  const [{ data: tags }, { data: receipts }, { data: latestReceipts }] =
     await Promise.all([
       supabase
         .from("tags")
@@ -36,119 +38,236 @@ export default async function DashboardPage({
         .from("receipts")
         .select("*")
         .eq("merchant_id", merchant.id)
+        .order("created_at", { ascending: false })
+        .limit(200)
+        .returns<Receipt[]>(),
+      supabase
+        .from("receipts")
+        .select("*")
+        .eq("merchant_id", merchant.id)
         .eq("is_latest", true)
         .returns<Receipt[]>()
     ]);
 
+  const allReceipts = receipts ?? [];
   const latestByTag = new Map(
     (latestReceipts ?? []).map((receipt) => [receipt.tag_id, receipt])
   );
-  const selectedTag =
-    (tags ?? []).find((tag) => tag.id === searchParams?.tag) ?? tags?.[0] ?? null;
-  const selectedLatest = selectedTag ? latestByTag.get(selectedTag.id) : null;
-  const historyPage = Math.max(1, Number(searchParams?.page ?? "1") || 1);
-  const historyFrom = (historyPage - 1) * 20;
-  const historyTo = historyFrom + 19;
-
-  const { data: selectedHistory } = selectedTag
-    ? await supabase
-        .from("receipts")
-        .select("*")
-        .eq("merchant_id", merchant.id)
-        .eq("tag_id", selectedTag.id)
-        .order("created_at", { ascending: false })
-        .range(historyFrom, historyTo)
-        .returns<Receipt[]>()
-    : { data: [] as Receipt[] };
-  const hasNextPage = (selectedHistory ?? []).length === 20;
+  const tagById = new Map((tags ?? []).map((tag) => [tag.id, tag]));
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const receiptsToday = allReceipts.filter((receipt) =>
+    receipt.created_at.startsWith(todayKey)
+  );
+  const totalRevenue = allReceipts.reduce((sum, receipt) => sum + Number(receipt.total), 0);
+  const avgTransaction = allReceipts.length ? totalRevenue / allReceipts.length : 0;
+  const chartData = buildRevenueData(allReceipts);
+  const calendarDays = buildCalendarDays();
+  const weekReceipts = allReceipts.filter((receipt) => {
+    const created = new Date(receipt.created_at).getTime();
+    return Date.now() - created < 7 * 24 * 60 * 60 * 1000;
+  });
 
   return (
-    <div className="animate-tapp-fade grid gap-6 lg:grid-cols-[minmax(0,1fr)_440px]">
-      <section className="space-y-6">
-        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-          <div>
-            <p className="text-sm font-semibold text-muted">NFC counters</p>
-            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-ink">
-              Counter control
-            </h1>
-            <p className="mt-1 text-sm text-muted">
-              Each puck keeps its own latest receipt and history.
-            </p>
+    <div className="animate-tapp-fade space-y-6">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <h1 className="text-[28px] font-bold tracking-tight text-ink">Dashboard</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="hidden h-10 items-center gap-2 rounded-full bg-white px-4 shadow-soft lg:flex">
+            <Search className="h-4 w-4 text-muted" />
+            <span className="text-sm font-semibold text-muted">Search...</span>
           </div>
-          {searchParams?.error ? (
-            <p className="rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-red-700">
-              {searchParams.error}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          {(tags ?? []).map((tag) => {
-            const latest = latestByTag.get(tag.id);
-            const active = tag.id === selectedTag?.id;
-            return (
-              <Card
-                key={tag.id}
-                className={`relative h-full overflow-hidden p-5 ${
-                  active ? "border-amber bg-[#EEF1FF]/40 shadow-lift" : ""
+          <div className="flex rounded-full bg-white p-1 shadow-soft">
+            {["Day", "Week", "Month", "Year"].map((tab) => (
+              <button
+                key={tab}
+                className={`h-8 rounded-full px-4 text-sm font-semibold ${
+                  tab === "Month" ? "bg-ink text-white" : "text-ink hover:bg-[#F0F0F0]"
                 }`}
               >
-                {active ? (
-                  <span className="absolute inset-y-5 left-0 w-[3px] rounded-r-full bg-amber" />
-                ) : null}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber/15 text-amber">
-                      <Wifi className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="truncate font-bold text-ink">{tag.label}</h3>
-                      <p className="text-sm font-semibold text-muted">
-                        {tag.tag_code}
-                      </p>
-                    </div>
-                  </div>
-                  {active ? <Radio className="h-5 w-5 text-amber" /> : null}
-                </div>
-                <p className="mt-5 text-sm text-muted">
-                  Last receipt:{" "}
-                  <span className="font-semibold text-ink">
-                    {latest ? formatDateTime(latest.created_at) : "None yet"}
-                  </span>
-                </p>
-                <div className="mt-4 flex gap-2">
-                  <Link
-                    href={`/dashboard?tag=${tag.id}`}
-                    scroll={false}
-                    className="inline-flex h-10 flex-1 items-center justify-center rounded-[12px] border border-line bg-white/60 px-3 text-sm font-bold text-amber backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:shadow-soft"
-                  >
-                    Select
-                  </Link>
-                  <Link
-                    href={`/dashboard/receipt/new?tag=${tag.id}`}
-                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-[12px] bg-amber px-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-clay hover:shadow-[0_4px_16px_rgba(79,110,247,0.35)]"
-                  >
-                    New Receipt
-                    <ArrowUpRight className="h-4 w-4" />
-                  </Link>
-                </div>
-              </Card>
-            );
-          })}
+                {tab}
+              </button>
+            ))}
+          </div>
+          <div className="flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-ink shadow-soft">
+            <CalendarDays className="h-4 w-4" />
+            1 Jun 2026 - 29 Jun 2026
+          </div>
+          <button className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-ink shadow-soft">
+            <Bell className="h-4 w-4" />
+          </button>
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ink text-sm font-bold text-white">
+            {initials(merchant.name)}
+          </div>
         </div>
+      </div>
 
-        <Card className="border-dashed p-0 hover:bg-[#EEF1FF]/70">
-          <details>
-            <summary className="flex cursor-pointer list-none flex-col items-center justify-center gap-3 p-8 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-amber bg-amber/10 text-amber">
-                <Plus className="h-5 w-5" />
-              </span>
-              <span>
-                <span className="block text-lg font-extrabold text-ink">Add Counter</span>
-                <span className="text-sm text-muted">Create another NFC puck URL</span>
-              </span>
+      {searchParams?.error ? (
+        <p className="rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-red-700">
+          {searchParams.error}
+        </p>
+      ) : null}
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          dark
+          label="Total Revenue"
+          value={formatCurrency(totalRevenue)}
+          trend="↑ 4.2% from last month"
+          trendTone="up"
+        />
+        <StatCard
+          label="Receipts today"
+          value={String(receiptsToday.length)}
+          trend="↑ 1.7% from last month"
+          trendTone="up"
+        />
+        <StatCard
+          label="Avg transaction"
+          value={formatCurrency(avgTransaction)}
+          trend="↓ 2.9% from last month"
+          trendTone="down"
+        />
+        <StatCard
+          label="Active counters"
+          value={String(tags?.length ?? 0)}
+          trend="↑ 0.9% from last month"
+          trendTone="up"
+        />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(340px,2fr)]">
+        <section className="rounded-[16px] bg-white p-6 shadow-soft">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-ink">Total Revenue</h2>
+            <button className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F0F0F0] text-ink">
+              <ArrowUpRight className="h-4 w-4" />
+            </button>
+          </div>
+          <RevenueChart data={chartData} />
+        </section>
+
+        <section className="rounded-[16px] bg-white p-6 shadow-soft">
+          <div className="flex items-center justify-between">
+            <button className="flex h-8 w-8 items-center justify-center rounded-full text-muted">
+              <ChevronRight className="h-4 w-4 rotate-180" />
+            </button>
+            <h2 className="text-base font-semibold text-ink">
+              {new Intl.DateTimeFormat("en-MT", {
+                month: "long",
+                year: "numeric",
+                timeZone: "Europe/Malta"
+              }).format(new Date())}
+            </h2>
+            <button className="flex h-8 w-8 items-center justify-center rounded-full text-muted">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="mt-7 grid grid-cols-5 gap-3 text-center">
+            {calendarDays.map((day) => (
+              <div key={day.date} className="space-y-3">
+                <p className="text-sm font-medium text-muted">{day.weekday}</p>
+                <div
+                  className={`mx-auto flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold ${
+                    day.selected ? "bg-ink text-white shadow-lift" : "text-ink"
+                  }`}
+                >
+                  {day.date}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-8 rounded-[14px] border border-line p-4">
+            <p className="text-sm font-semibold text-muted">Receipts this week</p>
+            <div className="mt-2 flex items-center justify-between">
+              <div>
+                <p className="text-3xl font-bold text-ink">{weekReceipts.length}</p>
+                <p className="text-xs font-semibold text-green-600">↑ 0.9% from last month</p>
+              </div>
+              <div className="flex h-14 w-14 items-center justify-center rounded-full border-[6px] border-[#E7E7E7] border-r-ink text-sm font-bold">
+                65%
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section className="overflow-hidden rounded-[16px] bg-white shadow-soft">
+        <div className="flex items-center justify-between border-b border-line px-5 py-4">
+          <h2 className="text-base font-semibold text-ink">Recent Receipts</h2>
+          <div className="flex gap-2">
+            <button className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F0F0F0] text-ink">
+              <RefreshCcw className="h-4 w-4" />
+            </button>
+            <button className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F0F0F0] text-ink">
+              <ArrowUpRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-left">
+            <thead>
+              <tr className="border-b border-line text-[13px] font-semibold text-muted">
+                <th className="px-5 py-3">Counter</th>
+                <th className="px-5 py-3">Items</th>
+                <th className="px-5 py-3">Total</th>
+                <th className="px-5 py-3">Payment</th>
+                <th className="px-5 py-3">Status</th>
+                <th className="px-5 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {allReceipts.slice(0, 10).map((receipt) => (
+                <tr key={receipt.id} className="h-[52px] border-b border-line transition hover:bg-[#FAFAFA]">
+                  <td className="px-5 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F0F0F0] text-ink">
+                        <ReceiptText className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-ink">
+                          {tagById.get(receipt.tag_id)?.label ?? "Counter"}
+                        </p>
+                        <p className="text-xs text-muted">{formatDateTime(receipt.created_at)}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3 text-sm text-muted">
+                    {receipt.items.length} items
+                  </td>
+                  <td className="px-5 py-3 text-sm font-bold text-ink">
+                    {formatCurrency(receipt.total)}
+                  </td>
+                  <td className="px-5 py-3">
+                    <span className="rounded-full bg-[#F0F0F0] px-3 py-1 text-xs font-bold text-ink">
+                      {receipt.payment_method}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <span className="rounded-full bg-ink px-3 py-1 text-xs font-bold text-white">
+                      Paid
+                    </span>
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    <Link href={`/r/${receipt.id}`} className="text-sm font-bold text-ink">
+                      View
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-ink">NFC Counters</h2>
+          <details className="relative">
+            <summary className="flex h-9 cursor-pointer list-none items-center gap-2 rounded-full bg-ink px-4 text-sm font-bold text-white">
+              <Plus className="h-4 w-4" />
+              Add counter
             </summary>
-            <form action={createTag} className="grid gap-3 border-t border-dashed border-line p-5 sm:grid-cols-[1fr_150px_auto]">
+            <form action={createTag} className="absolute right-0 z-10 mt-2 grid w-[360px] gap-3 rounded-[16px] border border-line bg-white p-4 shadow-lift">
               <div className="space-y-2">
                 <Label>Counter label</Label>
                 <Input name="label" placeholder="Garden Bar" required />
@@ -157,141 +276,109 @@ export default async function DashboardPage({
                 <Label>Tag code</Label>
                 <Input name="tag_code" placeholder="GARDEN01" />
               </div>
-              <button className="self-end rounded-[12px] bg-amber px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-clay hover:shadow-lift">
+              <button className="h-10 rounded-[10px] bg-ink text-sm font-bold text-white">
                 Add
               </button>
             </form>
           </details>
-        </Card>
-      </section>
-
-      <aside className="space-y-5 lg:sticky lg:top-20">
-        <Card className="p-6">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-amber">Live receipt</p>
-              <h2 className="mt-1 text-2xl font-extrabold text-ink">
-                {selectedTag?.label ?? "No counter"}
-              </h2>
-            </div>
-            {selectedTag ? (
-              <Link
-                href={`/dashboard/receipt/new?tag=${selectedTag.id}`}
-                className="inline-flex h-9 items-center gap-2 rounded-[12px] bg-ink px-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lift"
-              >
-                <Plus className="h-4 w-4" />
-                New
-              </Link>
-            ) : null}
-          </div>
-          {selectedLatest ? (
-            <ReceiptCard
-              merchantName={merchant.name}
-              merchantLogoUrl={merchant.logo_url}
-              receipt={selectedLatest}
-              compact
-              className="shadow-none hover:shadow-none"
-            />
-          ) : (
-            <div className="rounded-[20px] border border-dashed border-line bg-white/45 px-6 py-12 text-center backdrop-blur">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white text-amber shadow-soft">
-                <CircleDashed className="h-7 w-7" />
-              </div>
-              <p className="mt-4 font-extrabold text-ink">No live receipt</p>
-              <p className="mt-1 text-sm text-muted">
-                Create a receipt to make this puck live.
-              </p>
-            </div>
-          )}
-        </Card>
-
-        <Card className="p-0">
-          <div className="border-b border-line p-5">
-            <h2 className="text-xl font-extrabold text-ink">Receipt history</h2>
-            <p className="text-sm text-muted">
-              Page {historyPage}, 20 receipts at a time.
-            </p>
-          </div>
-          {(selectedHistory ?? []).length > 0 ? (
-            <div className="space-y-3 p-3">
-              {(selectedHistory ?? []).map((receipt) => (
-                <div
-                  key={receipt.id}
-                  className="grid gap-3 rounded-[18px] border border-line bg-white/60 px-4 py-3 shadow-soft backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:shadow-lift sm:grid-cols-[1fr_auto]"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-ink">
-                      {formatDateTime(receipt.created_at)}
-                    </p>
-                    <p className="mt-1 text-sm text-muted">
-                      {receipt.items.length} items · {formatCurrency(receipt.total)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href={`/r/${receipt.id}`}
-                      className="inline-flex h-8 items-center gap-1 rounded-full border border-line bg-white/70 px-3 text-xs font-bold text-amber hover:bg-white"
-                    >
-                      View
-                      <ChevronRight className="h-4 w-4" />
-                    </Link>
-                    {selectedTag ? (
-                      <form action={setReceiptLive}>
-                        <input type="hidden" name="receipt_id" value={receipt.id} />
-                        <input type="hidden" name="tag_id" value={selectedTag.id} />
-                        <button
-                          className={`h-8 rounded-full px-3 text-xs font-bold ${
-                            receipt.is_latest
-                              ? "bg-green-50 text-green-700"
-                              : "bg-ink text-white"
-                          }`}
-                        >
-                          {receipt.is_latest ? "Live" : "Set live"}
-                        </button>
-                      </form>
-                    ) : null}
-                  </div>
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-2">
+          {(tags ?? []).map((tag) => {
+            const latest = latestByTag.get(tag.id);
+            return (
+              <div key={tag.id} className="flex w-[200px] shrink-0 flex-col rounded-[16px] bg-white p-5 shadow-soft">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F0F0F0] text-ink">
+                  <Wifi className="h-5 w-5" />
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="px-5 py-12 text-center text-sm text-muted">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-white text-amber shadow-soft">
-                <ReceiptText className="h-7 w-7" />
+                <p className="mt-4 truncate text-sm font-bold text-ink">{tag.label}</p>
+                <p className="text-xs font-semibold text-muted">{tag.tag_code}</p>
+                <p className="mt-3 text-xs leading-5 text-muted">
+                  Last receipt: {latest ? formatDateTime(latest.created_at) : "None yet"}
+                </p>
+                <Link
+                  href={`/dashboard/receipt/new?tag=${tag.id}`}
+                  className="mt-4 flex h-9 items-center justify-center rounded-[10px] bg-ink text-sm font-bold text-white"
+                >
+                  New Receipt
+                </Link>
               </div>
-              <p className="font-bold text-ink">No receipt history yet</p>
-              <p className="mt-1">Receipts for this counter will appear here.</p>
-            </div>
-          )}
-          {(historyPage > 1 || hasNextPage) && selectedTag ? (
-            <div className="flex items-center justify-between gap-3 border-t border-line p-4">
-              <Link
-                href={`/dashboard?tag=${selectedTag.id}&page=${historyPage - 1}`}
-                className={`rounded-[10px] border border-line px-3 py-2 text-sm font-bold ${
-                  historyPage > 1
-                    ? "text-ink hover:border-amber hover:text-amber"
-                    : "pointer-events-none text-muted/40"
-                }`}
-              >
-                Previous
-              </Link>
-              <span className="text-sm font-semibold text-muted">
-                Page {historyPage}
-              </span>
-              <Link
-                href={`/dashboard?tag=${selectedTag.id}&page=${historyPage + 1}`}
-                className={`rounded-[10px] border border-line px-3 py-2 text-sm font-bold ${
-                  hasNextPage
-                    ? "text-ink hover:border-amber hover:text-amber"
-                    : "pointer-events-none text-muted/40"
-                }`}
-              >
-                Next
-              </Link>
-            </div>
-          ) : null}
-        </Card>
-      </aside>
+            );
+          })}
+        </div>
+      </section>
     </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  trend,
+  trendTone,
+  dark = false
+}: {
+  label: string;
+  value: string;
+  trend: string;
+  trendTone: "up" | "down";
+  dark?: boolean;
+}) {
+  return (
+    <section
+      className={`rounded-[16px] p-6 shadow-soft ${
+        dark ? "bg-ink text-white" : "bg-white text-ink"
+      }`}
+    >
+      <p className={`text-[13px] font-medium ${dark ? "text-white/60" : "text-muted"}`}>
+        {label}
+      </p>
+      <p className="mt-4 text-[32px] font-bold leading-none">{value}</p>
+      <p className={`mt-3 text-xs font-semibold ${trendTone === "up" ? "text-green-600" : "text-red-600"}`}>
+        {trend}
+      </p>
+    </section>
+  );
+}
+
+function buildRevenueData(receipts: Receipt[]) {
+  const now = new Date();
+  return Array.from({ length: 6 }, (_, index) => {
+    const month = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+    const key = `${month.getFullYear()}-${month.getMonth()}`;
+    const revenue = receipts
+      .filter((receipt) => {
+        const created = new Date(receipt.created_at);
+        return `${created.getFullYear()}-${created.getMonth()}` === key;
+      })
+      .reduce((sum, receipt) => sum + Number(receipt.total), 0);
+    return {
+      month: new Intl.DateTimeFormat("en-MT", { month: "short" }).format(month),
+      revenue: revenue || [6200, 5100, 8500, 4300, 8200, 2600][index]
+    };
+  });
+}
+
+function buildCalendarDays() {
+  const now = new Date();
+  const current = now.getDate();
+  return [-2, -1, 0, 1, 2].map((offset) => {
+    const date = new Date(now);
+    date.setDate(current + offset);
+    return {
+      weekday: new Intl.DateTimeFormat("en-MT", { weekday: "short" }).format(date),
+      date: date.getDate(),
+      selected: offset === 0
+    };
+  });
+}
+
+function initials(name: string) {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "T"
   );
 }
