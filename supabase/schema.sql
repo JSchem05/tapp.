@@ -379,4 +379,4 @@ create trigger on_auth_user_created
 
 -- Example seed after creating a Supabase Auth user:
 -- insert into public.tags (merchant_id, tag_code, label)
--- values ('AUTH_USER_UUID', 'CAFE01', 'Main Counter');
+-- values ('AUTH_USER_UUID', 'CAFE01  ', 'Main Counter');
