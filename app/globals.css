@@ -4,28 +4,30 @@
 
 @layer components {
   .field {
-    @apply h-11 rounded-[10px] border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-ink focus:ring-4 focus:ring-ink/10;
+    @apply h-11 rounded-[10px] border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/15;
   }
 }
 
 :root {
   color-scheme: light;
-  --bg: #f8f8f8;
+  --bg: #f5f3ee;
+  --surface: #ffffff;
   --card: #ffffff;
-  --sidebar: #111111;
+  --sidebar: #0f1729;
   --sidebar-text: #ffffff;
   --sidebar-muted: rgba(255, 255, 255, 0.5);
-  --accent: #111111;
-  --accent-2: #f0f0f0;
-  --text-primary: #111111;
-  --text-secondary: #666666;
-  --text-muted: #999999;
-  --border: #eeeeee;
+  --accent: #2563eb;
+  --accent-dark: #1d4ed8;
+  --accent-2: #eef3ff;
+  --text-primary: #0f1729;
+  --text-secondary: #6b7280;
+  --text-muted: #6b7280;
+  --border: #e5e7eb;
   --radius-card: 16px;
   --radius-button: 10px;
   --radius-pill: 999px;
-  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
-  --shadow-hover: 0 4px 20px rgba(0,0,0,0.10);
+  --shadow: 0 1px 3px rgba(0,0,0,.06), 0 8px 24px rgba(15,23,41,.06);
+  --shadow-hover: 0 4px 20px rgba(15,23,41,.12);
 }
 
 * {
@@ -60,7 +62,7 @@ select {
 }
 
 .solid-mark {
-  background: #111111;
+  background: #2563eb;
 }
 
 button,
@@ -73,7 +75,7 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 3px solid rgba(17, 17, 17, 0.16);
+  outline: 3px solid rgba(37, 99, 235, 0.22);
   outline-offset: 2px;
 }
 

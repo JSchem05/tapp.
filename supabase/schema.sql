@@ -18,14 +18,20 @@ alter table public.merchants
   add column if not exists address text,
   add column if not exists wifi_name text,
   add column if not exists wifi_password text,
+  add column if not exists google_review_url text,
   add column if not exists ad_headline text,
   add column if not exists ad_subtext text,
   add column if not exists ad_cta_label text,
   add column if not exists ad_cta_url text,
-  add column if not exists ad_bg_color text default '#4F6EF7',
+  add column if not exists ad_bg_color text default '#2563EB',
+  add column if not exists loyalty_goal int default 6,
+  add column if not exists loyalty_reward text,
   add column if not exists show_qr boolean default true,
   add column if not exists show_wifi boolean default false,
   add column if not exists show_ad boolean default false,
+  add column if not exists show_review boolean default false,
+  add column if not exists show_loyalty boolean default false,
+  add column if not exists show_email_opt_in boolean default true,
   add column if not exists show_social boolean default true,
   add column if not exists show_info boolean default true;
 
@@ -47,9 +53,13 @@ create table if not exists public.receipts (
   total numeric(10, 2) not null,
   payment_method text not null check (payment_method in ('Card', 'Cash', 'Other')),
   is_latest boolean not null default false,
+  customer_email text,
   created_at timestamptz not null default now(),
   constraint receipts_items_array check (jsonb_typeof(items) = 'array')
 );
+
+alter table public.receipts
+  add column if not exists customer_email text;
 
 create table if not exists public.categories (
   id uuid primary key default gen_random_uuid(),
@@ -109,6 +119,24 @@ create table if not exists public.orders (
   constraint orders_items_array check (jsonb_typeof(items) = 'array')
 );
 
+create table if not exists public.customers (
+  id uuid primary key default gen_random_uuid(),
+  merchant_id uuid not null references public.merchants(id) on delete cascade,
+  email text not null,
+  first_seen timestamptz not null default now(),
+  last_seen timestamptz not null default now(),
+  visit_count int not null default 1,
+  constraint customers_email_valid check (position('@' in email) > 1)
+);
+
+create table if not exists public.loyalty_cards (
+  id uuid primary key default gen_random_uuid(),
+  merchant_id uuid not null references public.merchants(id) on delete cascade,
+  customer_id uuid not null references public.customers(id) on delete cascade,
+  stamps int not null default 0,
+  redeemed_count int not null default 0
+);
+
 create unique index if not exists receipts_one_latest_per_tag
   on public.receipts(tag_id)
   where is_latest = true;
@@ -121,6 +149,8 @@ create index if not exists menu_items_merchant_category_sort_idx on public.menu_
 create index if not exists modifier_groups_merchant_idx on public.modifier_groups(merchant_id);
 create index if not exists modifiers_group_idx on public.modifiers(group_id);
 create index if not exists orders_merchant_created_at_idx on public.orders(merchant_id, created_at desc);
+create unique index if not exists customers_merchant_email_key on public.customers(merchant_id, lower(email));
+create unique index if not exists loyalty_cards_merchant_customer_key on public.loyalty_cards(merchant_id, customer_id);
 
 alter table public.merchants enable row level security;
 alter table public.tags enable row level security;
@@ -131,6 +161,8 @@ alter table public.modifier_groups enable row level security;
 alter table public.modifiers enable row level security;
 alter table public.item_modifier_groups enable row level security;
 alter table public.orders enable row level security;
+alter table public.customers enable row level security;
+alter table public.loyalty_cards enable row level security;
 
 insert into storage.buckets (id, name, public)
 values ('logos', 'logos', true)
@@ -279,6 +311,44 @@ create policy "Merchant owns orders"
   using (merchant_id = auth.uid())
   with check (merchant_id = auth.uid());
 
+drop policy if exists "Merchants can read their customers" on public.customers;
+create policy "Merchants can read their customers"
+  on public.customers for select
+  to authenticated
+  using (merchant_id = auth.uid());
+
+drop policy if exists "Merchants can manage their customers" on public.customers;
+create policy "Merchants can manage their customers"
+  on public.customers for all
+  to authenticated
+  using (merchant_id = auth.uid())
+  with check (merchant_id = auth.uid());
+
+drop policy if exists "Public can join merchant mailing list" on public.customers;
+create policy "Public can join merchant mailing list"
+  on public.customers for insert
+  to anon
+  with check (
+    exists (
+      select 1 from public.merchants
+      where merchants.id = merchant_id
+      and coalesce(merchants.show_email_opt_in, true) = true
+    )
+  );
+
+drop policy if exists "Merchants can read loyalty cards" on public.loyalty_cards;
+create policy "Merchants can read loyalty cards"
+  on public.loyalty_cards for select
+  to authenticated
+  using (merchant_id = auth.uid());
+
+drop policy if exists "Merchants can manage loyalty cards" on public.loyalty_cards;
+create policy "Merchants can manage loyalty cards"
+  on public.loyalty_cards for all
+  to authenticated
+  using (merchant_id = auth.uid())
+  with check (merchant_id = auth.uid());
+
 drop policy if exists "Public can read logos" on storage.objects;
 create policy "Public can read logos"
   on storage.objects for select
@@ -379,4 +449,4 @@ create trigger on_auth_user_created
 
 -- Example seed after creating a Supabase Auth user:
 -- insert into public.tags (merchant_id, tag_code, label)
--- values ('AUTH_USER_UUID', 'CAFE01  ', 'Main Counter');
+-- values ('AUTH_USER_UUID', 'CAFE01', 'Main Counter');

@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { Card } from "@/components/ui";
+import { joinReceiptOffers } from "@/app/receipt-engagement/actions";
 import { formatCurrency, formatDateTime } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import type { Receipt, ReceiptItem, ReceiptMerchantProfile } from "@/lib/types";
@@ -14,14 +15,16 @@ import {
   Globe,
   Instagram,
   Lock,
+  Mail,
   MapPin,
   Phone,
   Printer,
   Share2,
+  Star,
   Wifi
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 type ReceiptDisplay = Pick<
   Receipt,
@@ -32,10 +35,12 @@ type ReceiptDisplay = Pick<
   | "vat"
   | "total"
   | "payment_method"
+  | "customer_email"
 >;
 
 export function ReceiptView({
   merchantName,
+  merchantId,
   merchantLogoUrl,
   merchantProfile,
   receipt,
@@ -46,6 +51,7 @@ export function ReceiptView({
   banner
 }: {
   merchantName: string;
+  merchantId?: string;
   merchantLogoUrl?: string | null;
   merchantProfile?: Partial<ReceiptMerchantProfile> | null;
   receipt: ReceiptDisplay;
@@ -120,7 +126,11 @@ export function ReceiptView({
         </ReceiptSection>
       ) : null}
 
-      <MerchantInfoSection profile={profile} delay={banner ? 60 : 0} />
+      <MerchantHeader
+        profile={profile}
+        createdAt={receipt.created_at}
+        delay={banner ? 60 : 0}
+      />
 
       <ReceiptSection delay={banner ? 120 : 60}>
         <div ref={receiptRef} className="receipt-print-area">
@@ -129,6 +139,7 @@ export function ReceiptView({
           merchantLogoUrl={merchantLogoUrl}
           receipt={receipt}
           compact={compact}
+          showHeader={false}
         />
         </div>
       </ReceiptSection>
@@ -136,13 +147,13 @@ export function ReceiptView({
       {showActions ? (
         <ReceiptSection delay={banner ? 180 : 120} className="no-print grid grid-cols-3 gap-2">
           <ActionButton onClick={savePdf} icon={<Printer className="h-4 w-4" />}>
-            PDF
+            Save PDF
           </ActionButton>
           <ActionButton
             onClick={saveImage}
             icon={<Download className="h-4 w-4" />}
           >
-            Image
+            Save image
           </ActionButton>
           <ActionButton onClick={shareReceipt} icon={<Share2 className="h-4 w-4" />}>
             Share
@@ -150,21 +161,33 @@ export function ReceiptView({
         </ReceiptSection>
       ) : null}
 
+      <ReviewSection profile={profile} delay={banner ? 240 : 180} />
+      <LoyaltySection
+        profile={profile}
+        customerEmail={receipt.customer_email}
+        delay={banner ? 300 : 240}
+      />
       <WifiSection
         profile={profile}
         notify={notify}
-        delay={banner ? 240 : 180}
+        delay={banner ? 360 : 300}
+      />
+      <PromotionSection profile={profile} delay={banner ? 420 : 360} />
+      <EmailOptInSection
+        merchantId={merchantId}
+        profile={profile}
+        notify={notify}
+        delay={banner ? 480 : 420}
       />
       <QrSection
         profile={profile}
-        url={currentUrl || permalink || ""}
+        url={permalink || currentUrl || ""}
         notify={notify}
-        delay={banner ? 300 : 240}
+        delay={banner ? 540 : 480}
       />
-      <PromotionSection profile={profile} delay={banner ? 360 : 300} />
 
       {history.length > 0 ? (
-        <ReceiptSection delay={banner ? 420 : 360}>
+        <ReceiptSection delay={banner ? 600 : 540}>
           <PreviousVisits
             merchantName={merchantName}
             merchantLogoUrl={merchantLogoUrl}
@@ -173,14 +196,14 @@ export function ReceiptView({
         </ReceiptSection>
       ) : null}
 
-      <ReceiptSection delay={banner ? 480 : 420}>
+      <ReceiptSection delay={banner ? 660 : 600}>
         <a
           href="https://tapp.mt"
           target="_blank"
           rel="noreferrer"
-          className="no-print flex items-center justify-center gap-2 text-center text-[11px] font-medium text-muted/70 transition hover:text-ink"
+          className="no-print flex items-center justify-center gap-2 text-center text-[11px] font-medium text-muted/70 transition hover:text-amber"
         >
-          <span className="solid-mark flex h-5 w-5 items-center justify-center rounded-md text-[10px] font-extrabold text-white">
+          <span className="solid-mark flex h-5 w-5 items-center justify-center rounded-md text-[10px] font-semibold text-white">
             T
           </span>
           Powered by Tapp.
@@ -215,36 +238,36 @@ function ReceiptSection({
   );
 }
 
-function MerchantInfoSection({
+function MerchantHeader({
   profile,
+  createdAt,
   delay
 }: {
   profile: Partial<ReceiptMerchantProfile>;
+  createdAt: string;
   delay: number;
 }) {
-  if (profile.show_info === false) return null;
-
   const pills = merchantInfoPills(profile);
 
   return (
     <ReceiptSection delay={delay}>
-      <Card className="p-5">
-        <div className="flex items-start gap-3">
+      <header className="px-1 py-2">
+        <div className="flex items-center gap-3">
           <LogoMark
             merchantName={profile.name ?? "Merchant"}
             logoUrl={profile.logo_url ?? null}
-            size="sm"
           />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[15px] font-extrabold text-ink">
+            <h1 className="truncate text-2xl font-semibold tracking-tight text-ink">
               {profile.name ?? "Merchant"}
-            </p>
-            {profile.tagline ? (
-              <p className="mt-1 text-xs leading-5 text-muted">{profile.tagline}</p>
-            ) : null}
+            </h1>
+            <p className="mt-1 text-sm text-muted">{formatDateTime(createdAt)}</p>
           </div>
         </div>
-        {pills.length > 0 ? (
+        {profile.show_info !== false && profile.tagline ? (
+          <p className="mt-3 text-sm leading-6 text-muted">{profile.tagline}</p>
+        ) : null}
+        {profile.show_info !== false && pills.length > 0 ? (
           <div className="mt-4 flex flex-wrap gap-2">
             {pills.map((pill) => (
               <a
@@ -252,13 +275,107 @@ function MerchantInfoSection({
                 href={pill.href}
                 target={pill.external ? "_blank" : undefined}
                 rel={pill.external ? "noreferrer" : undefined}
-                className="inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1 text-xs font-bold text-ink shadow-sm transition hover:bg-[#FAFAFA] hover:shadow-soft"
+                className="inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1 text-xs font-semibold text-ink shadow-sm transition hover:bg-blueSoft hover:shadow-soft"
               >
                 <span className="text-muted">{pill.icon}</span>
                 <span className="truncate">{pill.label}</span>
               </a>
             ))}
           </div>
+        ) : null}
+      </header>
+    </ReceiptSection>
+  );
+}
+
+function ReviewSection({
+  profile,
+  delay
+}: {
+  profile: Partial<ReceiptMerchantProfile>;
+  delay: number;
+}) {
+  if (!profile.show_review || !profile.google_review_url) return null;
+
+  return (
+    <ReceiptSection delay={delay}>
+      <Card className="p-5">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FFFBEB] text-warning">
+            <Star className="h-5 w-5 fill-current" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-semibold text-ink">Enjoyed it?</h2>
+            <p className="mt-1 text-sm leading-6 text-muted">
+              Leave us a quick Google review. It helps local places grow.
+            </p>
+            <div className="mt-3 flex gap-1 text-warning" aria-hidden="true">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Star key={index} className="h-4 w-4 fill-current" />
+              ))}
+            </div>
+          </div>
+        </div>
+        <a
+          href={normalizeExternalUrl(profile.google_review_url)}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-[10px] bg-amber px-4 text-sm font-semibold text-white shadow-soft transition hover:bg-clay"
+        >
+          Leave a review
+        </a>
+      </Card>
+    </ReceiptSection>
+  );
+}
+
+function LoyaltySection({
+  profile,
+  customerEmail,
+  delay
+}: {
+  profile: Partial<ReceiptMerchantProfile>;
+  customerEmail?: string | null;
+  delay: number;
+}) {
+  if (!profile.show_loyalty) return null;
+
+  const goal = Math.max(1, Math.min(12, Number(profile.loyalty_goal ?? 6)));
+  const stamps = customerEmail ? 1 : 0;
+  const remaining = Math.max(goal - stamps, 0);
+  const reward = profile.loyalty_reward || "reward";
+
+  return (
+    <ReceiptSection delay={delay}>
+      <Card className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-ink">Loyalty card</h2>
+            <p className="mt-1 text-sm leading-6 text-muted">
+              {remaining} {remaining === 1 ? "visit" : "visits"} to a free {reward}.
+            </p>
+          </div>
+          <span className="rounded-full bg-greenSoft px-3 py-1 text-xs font-semibold text-sage">
+            {stamps}/{goal}
+          </span>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2" aria-label={`${stamps} of ${goal} loyalty stamps`}>
+          {Array.from({ length: goal }).map((_, index) => (
+            <span
+              key={index}
+              className={cn(
+                "h-8 w-8 rounded-full border",
+                index < stamps
+                  ? "border-sage bg-greenSoft"
+                  : "border-line bg-white"
+              )}
+            />
+          ))}
+        </div>
+        {!customerEmail ? (
+          <p className="mt-3 text-xs leading-5 text-muted">
+            Join with your email below to start collecting stamps.
+          </p>
         ) : null}
       </Card>
     </ReceiptSection>
@@ -291,12 +408,12 @@ function WifiSection({
       <Card className="border-line bg-white p-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F0F0F0] text-ink">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blueSoft text-amber">
               <Wifi className="h-4 w-4" />
             </span>
-            <p className="text-sm font-extrabold text-ink">Free WiFi</p>
+            <p className="text-sm font-semibold text-ink">Free WiFi</p>
           </div>
-          <span className="min-w-0 truncate rounded-full border border-line bg-[#F0F0F0] px-3 py-1 text-xs font-extrabold text-ink">
+          <span className="min-w-0 truncate rounded-full border border-blueSoft bg-blueSoft px-3 py-1 text-xs font-semibold text-amber">
             {profile.wifi_name}
           </span>
         </div>
@@ -311,13 +428,79 @@ function WifiSection({
             <button
               type="button"
               onClick={copyPassword}
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-line bg-white px-3 text-xs font-extrabold text-ink shadow-sm transition hover:bg-[#FAFAFA]"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-line bg-white px-3 text-xs font-semibold text-amber shadow-sm transition hover:bg-blueSoft"
             >
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               {copied ? "Copied!" : "Tap to copy"}
             </button>
           </div>
         ) : null}
+      </Card>
+    </ReceiptSection>
+  );
+}
+
+function EmailOptInSection({
+  merchantId,
+  profile,
+  notify,
+  delay
+}: {
+  merchantId?: string;
+  profile: Partial<ReceiptMerchantProfile>;
+  notify: (message: string) => void;
+  delay: number;
+}) {
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [isPending, startTransition] = useTransition();
+
+  if (profile.show_email_opt_in === false || !merchantId) return null;
+  const safeMerchantId = merchantId;
+
+  function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    startTransition(async () => {
+      const result = await joinReceiptOffers({ merchantId: safeMerchantId, email });
+      setMessage(result.message);
+      notify(result.message);
+      if (result.ok) setEmail("");
+    });
+  }
+
+  return (
+    <ReceiptSection delay={delay}>
+      <Card className="p-5">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blueSoft text-amber">
+            <Mail className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="text-base font-semibold text-ink">Get our offers</h2>
+            <p className="mt-1 text-sm leading-6 text-muted">
+              Join for promos, loyalty rewards, and useful updates.
+            </p>
+          </div>
+        </div>
+        <form onSubmit={submit} className="mt-4 grid grid-cols-[1fr_auto] gap-2">
+          <input
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            type="email"
+            inputMode="email"
+            placeholder="you@example.com"
+            className="h-10 min-w-0 rounded-[10px] border border-line bg-white px-3 text-sm text-ink outline-none transition placeholder:text-faint focus:border-amber focus:ring-4 focus:ring-amber/15"
+            required
+          />
+          <button
+            type="submit"
+            disabled={isPending}
+            className="h-10 rounded-[10px] bg-amber px-4 text-sm font-semibold text-white transition hover:bg-clay disabled:opacity-60"
+          >
+            {isPending ? "Joining" : "Join"}
+          </button>
+        </form>
+        {message ? <p className="mt-3 text-xs font-semibold text-muted">{message}</p> : null}
       </Card>
     </ReceiptSection>
   );
@@ -344,7 +527,7 @@ function QrSection({
   return (
     <ReceiptSection delay={delay}>
       <Card className="p-5 text-center">
-        <h2 className="text-sm font-extrabold text-ink">Save this receipt</h2>
+        <h2 className="text-sm font-semibold text-ink">Save this receipt</h2>
         <p className="mt-1 text-xs text-muted">Scan to open on another device</p>
         <div className="mx-auto mt-4 inline-flex rounded-[20px] border border-line bg-white p-3 shadow-soft">
           <QRCodeSVG value={url} size={140} level="M" />
@@ -352,10 +535,10 @@ function QrSection({
         <button
           type="button"
           onClick={copyUrl}
-          className="mx-auto mt-4 flex max-w-full items-center justify-center gap-2 rounded-full border border-line bg-white px-3 py-2 text-[11px] font-semibold text-muted shadow-sm transition hover:bg-[#FAFAFA] hover:text-ink"
+          className="mx-auto mt-4 flex max-w-full items-center justify-center gap-2 rounded-full border border-line bg-white px-3 py-2 text-[11px] font-semibold text-muted shadow-sm transition hover:bg-blueSoft hover:text-amber"
         >
           <span className="truncate">{url}</span>
-          <Copy className="h-3.5 w-3.5 shrink-0 text-ink" />
+          <Copy className="h-3.5 w-3.5 shrink-0 text-amber" />
         </button>
       </Card>
     </ReceiptSection>
@@ -371,7 +554,7 @@ function PromotionSection({
 }) {
   if (!profile.show_ad || !profile.ad_headline) return null;
 
-  const color = normalizeHexColor(profile.ad_bg_color ?? "#111111");
+  const color = normalizeHexColor(profile.ad_bg_color ?? "#2563EB");
   const ctaHref = normalizeExternalUrl(profile.ad_cta_url ?? "");
 
   return (
@@ -385,7 +568,7 @@ function PromotionSection({
       >
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
           <div>
-            <h2 className="text-lg font-extrabold leading-snug text-ink">
+            <h2 className="text-lg font-semibold leading-snug text-ink">
               {profile.ad_headline}
             </h2>
             {profile.ad_subtext ? (
@@ -397,7 +580,7 @@ function PromotionSection({
               href={ctaHref}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-ink px-4 text-sm font-extrabold text-white shadow-soft transition hover:bg-clay"
+              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-amber px-4 text-sm font-semibold text-white shadow-soft transition hover:bg-clay"
             >
               {profile.ad_cta_label}
             </a>
@@ -413,12 +596,14 @@ export function ReceiptCard({
   merchantLogoUrl,
   receipt,
   compact = false,
+  showHeader = true,
   className
 }: {
   merchantName: string;
   merchantLogoUrl?: string | null;
   receipt: ReceiptDisplay;
   compact?: boolean;
+  showHeader?: boolean;
   className?: string;
 }) {
   const items = receipt.items as ReceiptItem[];
@@ -431,17 +616,19 @@ export function ReceiptCard({
         className
       )}
     >
-      <div className="mb-6 flex items-start gap-3">
-        <LogoMark merchantName={merchantName} logoUrl={merchantLogoUrl} />
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-xl font-extrabold tracking-tight text-ink">
-            {merchantName}
-          </h1>
-          <p className="mt-1 text-sm text-muted">
-            {formatDateTime(receipt.created_at)}
-          </p>
+      {showHeader ? (
+        <div className="mb-6 flex items-start gap-3">
+          <LogoMark merchantName={merchantName} logoUrl={merchantLogoUrl} size="sm" />
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-xl font-semibold tracking-tight text-ink">
+              {merchantName}
+            </h1>
+            <p className="mt-1 text-sm text-muted">
+              {formatDateTime(receipt.created_at)}
+            </p>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <div className="divide-y divide-line border-y border-line">
         {items.map((item, index) => (
@@ -450,12 +637,12 @@ export function ReceiptCard({
             className="grid grid-cols-[1fr_auto] gap-4 py-4 first:pt-5 last:pb-5"
           >
             <div className="min-w-0">
-              <p className="truncate font-bold text-ink">{item.name}</p>
+              <p className="truncate font-semibold text-ink">{item.name}</p>
               <p className="mt-1 text-sm text-muted">
                 Qty {item.qty} x {formatCurrency(item.price)}
               </p>
             </div>
-            <p className="font-bold text-ink">
+            <p className="font-semibold text-ink">
               {formatCurrency(item.qty * item.price)}
             </p>
           </div>
@@ -466,8 +653,8 @@ export function ReceiptCard({
         <ReceiptRow label="Subtotal" value={formatCurrency(receipt.subtotal)} />
         <ReceiptRow label="VAT 18%" value={formatCurrency(receipt.vat)} />
         <div className="flex items-center justify-between border-t border-line pt-4">
-          <span className="text-base font-extrabold text-ink">Total</span>
-          <span className="text-3xl font-extrabold tracking-tight text-ink">
+          <span className="text-base font-semibold text-ink">Total</span>
+          <span className="text-3xl font-semibold tracking-tight text-ink">
             {formatCurrency(receipt.total)}
           </span>
         </div>
@@ -475,7 +662,7 @@ export function ReceiptCard({
 
       <div className="mt-5 flex items-center justify-between">
         <span className="text-sm font-medium text-muted">Payment method</span>
-        <span className="rounded-full border border-line bg-[#F0F0F0] px-3 py-1 text-sm font-extrabold text-ink">
+        <span className="rounded-full border border-blueSoft bg-blueSoft px-3 py-1 text-sm font-semibold text-amber">
           {receipt.payment_method}
         </span>
       </div>
@@ -495,13 +682,13 @@ function PreviousVisits({
   return (
     <section className="no-print space-y-3">
       <div>
-        <h2 className="text-lg font-extrabold text-ink">Previous visits</h2>
+        <h2 className="text-lg font-semibold text-ink">Previous visits</h2>
         <p className="text-sm text-muted">Last 10 receipts from this counter.</p>
       </div>
       <div className="panel-card overflow-hidden">
         {receipts.map((receipt) => (
           <details key={receipt.id} className="group border-b border-line last:border-b-0">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 transition hover:bg-[#FAFAFA]">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 transition hover:bg-blueSoft">
               <span className="min-w-0">
                 <span className="block truncate text-sm font-semibold text-ink">
                   {formatDateTime(receipt.created_at)}
@@ -511,7 +698,7 @@ function PreviousVisits({
                 </span>
               </span>
               <span className="flex items-center gap-2">
-                <span className="text-sm font-bold text-ink">
+                <span className="text-sm font-semibold text-ink">
                   {formatCurrency(receipt.total)}
                 </span>
                 <ChevronDown className="h-4 w-4 text-muted transition group-open:rotate-180" />
@@ -570,7 +757,7 @@ function LogoMark({
   return (
     <div
       className={cn(
-        "solid-mark flex shrink-0 items-center justify-center rounded-full font-extrabold text-white shadow-soft",
+        "solid-mark flex shrink-0 items-center justify-center rounded-full font-semibold text-white shadow-soft",
         classes
       )}
     >
@@ -642,7 +829,7 @@ function domainLabel(value: string) {
 }
 
 function normalizeHexColor(value: string) {
-  return /^#[0-9a-f]{6}$/i.test(value) ? value : "#111111";
+  return /^#[0-9a-f]{6}$/i.test(value) ? value : "#2563EB";
 }
 
 function hexToRgba(hex: string, alpha: number) {
@@ -675,7 +862,7 @@ function ActionButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-full border border-line bg-white px-3 text-xs font-bold text-ink shadow-soft transition hover:border-ink hover:bg-[#FAFAFA] hover:shadow-lift sm:text-sm"
+      className="flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-full border border-line bg-white px-3 text-xs font-semibold text-ink shadow-soft transition hover:border-amber hover:bg-blueSoft hover:text-amber hover:shadow-lift sm:text-sm"
     >
       {icon}
       <span className="truncate">{children}</span>

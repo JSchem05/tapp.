@@ -46,7 +46,8 @@ export function ReceiptForm({
     subtotal: totals.subtotal,
     vat: totals.vat,
     total: totals.total,
-    payment_method: paymentMethod
+    payment_method: paymentMethod,
+    customer_email: null
   };
   const serializedItems = JSON.stringify(
     items.map(({ name, qty, price }) => ({ name, qty, price }))

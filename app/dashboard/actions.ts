@@ -55,14 +55,20 @@ export async function updateMerchantSettings(formData: FormData) {
       address: optionalText(formData, "address"),
       wifi_name: optionalText(formData, "wifi_name"),
       wifi_password: optionalText(formData, "wifi_password"),
+      google_review_url: optionalText(formData, "google_review_url"),
       ad_headline: optionalText(formData, "ad_headline"),
       ad_subtext: optionalText(formData, "ad_subtext"),
       ad_cta_label: optionalText(formData, "ad_cta_label"),
       ad_cta_url: optionalText(formData, "ad_cta_url"),
-      ad_bg_color: optionalText(formData, "ad_bg_color") ?? "#111111",
+      ad_bg_color: optionalText(formData, "ad_bg_color") ?? "#2563EB",
+      loyalty_goal: optionalNumber(formData, "loyalty_goal") ?? 6,
+      loyalty_reward: optionalText(formData, "loyalty_reward"),
       show_qr: checkboxOn(formData, "show_qr"),
       show_wifi: checkboxOn(formData, "show_wifi"),
       show_ad: checkboxOn(formData, "show_ad"),
+      show_review: checkboxOn(formData, "show_review"),
+      show_loyalty: checkboxOn(formData, "show_loyalty"),
+      show_email_opt_in: checkboxOn(formData, "show_email_opt_in"),
       show_social: checkboxOn(formData, "show_social"),
       show_info: checkboxOn(formData, "show_info")
     })
@@ -78,6 +84,11 @@ export async function updateMerchantSettings(formData: FormData) {
 function optionalText(formData: FormData, key: string) {
   const value = String(formData.get(key) ?? "").trim();
   return value ? value : null;
+}
+
+function optionalNumber(formData: FormData, key: string) {
+  const value = Number(formData.get(key));
+  return Number.isFinite(value) && value > 0 ? value : null;
 }
 
 function checkboxOn(formData: FormData, key: string) {

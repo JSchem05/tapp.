@@ -158,6 +158,7 @@ export default async function PublicReceiptPage({
       {receipt ? (
         <ReceiptView
           merchantName={merchantName}
+          merchantId={tag.merchant_id}
           merchantLogoUrl={logoUrl}
           merchantProfile={tag.merchants}
           receipt={receipt}
@@ -188,7 +189,7 @@ function EmptyReceipt({ title, body }: { title: string; body: string }) {
       <div className="solid-mark mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-soft">
         <ReceiptText className="h-7 w-7" />
       </div>
-      <h1 className="text-xl font-bold text-ink">{title}</h1>
+      <h1 className="text-xl font-semibold text-ink">{title}</h1>
       <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-muted">{body}</p>
     </Card>
   );
@@ -200,7 +201,7 @@ function ErrorReceipt({ title, body }: { title: string; body: string }) {
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-700">
         <AlertTriangle className="h-7 w-7" />
       </div>
-      <h1 className="text-xl font-bold text-ink">{title}</h1>
+      <h1 className="text-xl font-semibold text-ink">{title}</h1>
       <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-muted">
         {body}
       </p>

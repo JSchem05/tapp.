@@ -19,14 +19,20 @@ export type Merchant = {
   address: string | null;
   wifi_name: string | null;
   wifi_password: string | null;
+  google_review_url: string | null;
   ad_headline: string | null;
   ad_subtext: string | null;
   ad_cta_label: string | null;
   ad_cta_url: string | null;
   ad_bg_color: string | null;
+  loyalty_goal: number | null;
+  loyalty_reward: string | null;
   show_qr: boolean;
   show_wifi: boolean;
   show_ad: boolean;
+  show_review: boolean;
+  show_loyalty: boolean;
+  show_email_opt_in: boolean;
   show_social: boolean;
   show_info: boolean;
   created_at: string;
@@ -43,14 +49,20 @@ export type ReceiptMerchantProfile = Pick<
   | "address"
   | "wifi_name"
   | "wifi_password"
+  | "google_review_url"
   | "ad_headline"
   | "ad_subtext"
   | "ad_cta_label"
   | "ad_cta_url"
   | "ad_bg_color"
+  | "loyalty_goal"
+  | "loyalty_reward"
   | "show_qr"
   | "show_wifi"
   | "show_ad"
+  | "show_review"
+  | "show_loyalty"
+  | "show_email_opt_in"
   | "show_social"
   | "show_info"
 >;
@@ -73,7 +85,25 @@ export type Receipt = {
   total: number;
   payment_method: PaymentMethod;
   is_latest: boolean;
+  customer_email: string | null;
   created_at: string;
+};
+
+export type Customer = {
+  id: string;
+  merchant_id: string;
+  email: string;
+  first_seen: string;
+  last_seen: string;
+  visit_count: number;
+};
+
+export type LoyaltyCard = {
+  id: string;
+  merchant_id: string;
+  customer_id: string;
+  stamps: number;
+  redeemed_count: number;
 };
 
 export type Category = {

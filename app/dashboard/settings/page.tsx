@@ -40,7 +40,7 @@ export default async function SettingsPage({
     <div className="animate-tapp-fade mx-auto max-w-[600px] space-y-5">
       <div>
         <p className="text-sm font-semibold text-muted">Settings</p>
-        <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-ink">
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink">
           Merchant profile
         </h1>
         <p className="mt-1 text-sm text-muted">
@@ -119,6 +119,27 @@ export default async function SettingsPage({
                 label="Show social links"
                 defaultChecked={merchant.show_social ?? true}
               />
+              <ToggleField
+                name="show_email_opt_in"
+                label="Show email opt-in"
+                defaultChecked={merchant.show_email_opt_in ?? true}
+              />
+            </SettingsGroup>
+
+            <SettingsGroup title="Reviews and loyalty">
+              <ToggleField
+                name="show_review"
+                label="Show Google review prompt"
+                defaultChecked={merchant.show_review ?? false}
+              />
+              <SettingInput name="google_review_url" label="Google review URL" defaultValue={merchant.google_review_url} placeholder="https://g.page/r/..." />
+              <ToggleField
+                name="show_loyalty"
+                label="Show loyalty card"
+                defaultChecked={merchant.show_loyalty ?? false}
+              />
+              <SettingInput name="loyalty_goal" label="Visits needed" defaultValue={String(merchant.loyalty_goal ?? 6)} placeholder="6" />
+              <SettingInput name="loyalty_reward" label="Reward" defaultValue={merchant.loyalty_reward} placeholder="free coffee" />
             </SettingsGroup>
 
             <SettingsGroup title="Promotion banner">
@@ -137,7 +158,7 @@ export default async function SettingsPage({
                   <input
                     name="ad_bg_color"
                     type="color"
-                    defaultValue={merchant.ad_bg_color ?? "#111111"}
+                    defaultValue={merchant.ad_bg_color ?? "#2563EB"}
                     className="h-11 w-16 rounded-[10px] border border-line bg-white p-1 shadow-sm"
                   />
                   <span className="text-sm text-muted">Used as a soft tint on the customer receipt.</span>
@@ -173,16 +194,16 @@ export default async function SettingsPage({
             return (
               <div
                 key={tag.id}
-                className="rounded-[16px] border border-line bg-white p-4 shadow-sm transition hover:bg-[#FAFAFA] hover:shadow-soft"
+                className="rounded-[16px] border border-line bg-white p-4 shadow-sm transition hover:bg-blueSoft hover:shadow-soft"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="font-extrabold text-ink">{tag.label}</p>
+                    <p className="font-semibold text-ink">{tag.label}</p>
                     <p className="mt-1 text-sm text-muted">{tag.tag_code}</p>
                   </div>
                   <CopyButton value={url} />
                 </div>
-                  <p className="mt-3 break-all rounded-[10px] border border-line bg-[#FAFAFA] px-3 py-2 text-sm text-muted">
+                  <p className="mt-3 break-all rounded-[10px] border border-line bg-blueSoft px-3 py-2 text-sm text-muted">
                   {url}
                 </p>
               </div>
@@ -209,7 +230,7 @@ export default async function SettingsPage({
         <button
           type="button"
           disabled
-          className="mt-5 rounded-[10px] border border-red-200 bg-white px-4 py-2 text-sm font-extrabold text-red-700 opacity-60"
+          className="mt-5 rounded-[10px] border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 opacity-60"
         >
           Delete account
         </button>
@@ -233,13 +254,13 @@ function SectionHeader({
     <div className="flex items-start gap-3">
       <div
         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-          tone === "danger" ? "bg-red-100 text-red-700" : "bg-[#F0F0F0] text-ink"
+          tone === "danger" ? "bg-red-100 text-red-700" : "bg-blueSoft text-amber"
         }`}
       >
         {icon}
       </div>
       <div>
-        <h2 className="text-xl font-extrabold text-ink">{title}</h2>
+        <h2 className="text-xl font-semibold text-ink">{title}</h2>
         <p className="mt-1 text-sm leading-6 text-muted">{description}</p>
       </div>
     </div>
@@ -255,7 +276,7 @@ function SettingsGroup({
 }) {
   return (
     <section className="rounded-[16px] border border-line bg-white p-4">
-      <h3 className="text-sm font-extrabold text-ink">{title}</h3>
+      <h3 className="text-sm font-semibold text-ink">{title}</h3>
       <div className="mt-4 grid gap-4">{children}</div>
     </section>
   );
@@ -304,7 +325,7 @@ function ToggleField({
   defaultChecked: boolean;
 }) {
   return (
-    <label className="flex items-center justify-between gap-4 rounded-[16px] border border-line bg-white px-4 py-3 text-sm font-bold text-ink shadow-sm">
+    <label className="flex items-center justify-between gap-4 rounded-[16px] border border-line bg-white px-4 py-3 text-sm font-semibold text-ink shadow-sm">
       <span>{label}</span>
       <span className="relative inline-flex h-7 w-12 shrink-0 items-center">
         <input
@@ -313,7 +334,7 @@ function ToggleField({
           defaultChecked={defaultChecked}
           className="peer sr-only"
         />
-        <span className="absolute inset-0 rounded-full border border-line bg-white transition peer-checked:border-ink peer-checked:bg-ink" />
+        <span className="absolute inset-0 rounded-full border border-line bg-white transition peer-checked:border-amber peer-checked:bg-amber" />
         <span className="absolute left-1 h-5 w-5 rounded-full bg-muted/50 transition peer-checked:translate-x-5 peer-checked:bg-white" />
       </span>
     </label>
@@ -322,7 +343,7 @@ function ToggleField({
 
 function SaveButton({ label = "Save section" }: { label?: string }) {
   return (
-    <button className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-[10px] bg-ink px-4 text-sm font-extrabold text-white shadow-soft transition hover:bg-clay hover:shadow-lift">
+    <button className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-[10px] bg-amber px-4 text-sm font-semibold text-white shadow-soft transition hover:bg-clay hover:shadow-lift">
       <Save className="h-4 w-4" />
       {label}
     </button>
