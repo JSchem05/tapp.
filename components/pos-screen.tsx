@@ -7,11 +7,13 @@ import Link from "next/link";
 export function PosScreen({
   merchantName,
   data,
-  mode
+  mode,
+  staffName
 }: {
   merchantName: string;
   data: PosData;
   mode: "owner" | "staff";
+  staffName?: string;
 }) {
   const { categories, items, tags } = data;
 
@@ -47,6 +49,7 @@ export function PosScreen({
     return (
       <PosClient
         merchantName={merchantName}
+        staffName={staffName}
         categories={categories}
         items={items}
         tags={tags}
@@ -58,22 +61,27 @@ export function PosScreen({
 
   return (
     <main className="h-screen overflow-hidden bg-cream">
-      <div className="grid h-full grid-rows-[56px_1fr]">
-        <header className="flex h-14 items-center justify-between border-b border-line bg-white px-5">
-          <div className="flex items-center gap-3">
+      <div className="grid h-full grid-rows-[64px_1fr]">
+        <header className="flex h-16 flex-nowrap items-center justify-between border-b border-line bg-white px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <Link
               href="/dashboard"
-              className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink hover:bg-[#FAFAFA]"
+              className="inline-flex h-9 shrink-0 items-center gap-2 rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink hover:bg-[#FAFAFA]"
             >
               <ArrowLeft className="h-4 w-4" />
               Dashboard
             </Link>
-            <div>
-              <p className="text-lg font-extrabold text-ink">{merchantName}</p>
-              <p className="text-xs text-muted">POS</p>
+            <div className="h-8 w-px bg-line" />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-ink">
+                {staffName ?? merchantName}
+              </p>
+              <p className="text-xs text-muted">
+                {staffName ? `${merchantName} · iPad POS` : "iPad POS"}
+              </p>
             </div>
           </div>
-          <div className="hidden text-sm font-semibold text-muted md:block">
+          <div className="hidden shrink-0 text-[13px] font-semibold text-muted md:block">
             {new Intl.DateTimeFormat("en-MT", {
               dateStyle: "medium",
               timeStyle: "short",
@@ -93,6 +101,7 @@ export function PosScreen({
 
         <PosClient
           merchantName={merchantName}
+          staffName={staffName}
           categories={categories}
           items={items}
           tags={tags}

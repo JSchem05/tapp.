@@ -12,11 +12,14 @@ import type {
   Tag
 } from "@/lib/types";
 import {
+  ChevronDown,
+  ChevronRight,
   Check,
   Maximize2,
   Minus,
   Pencil,
   Plus,
+  ReceiptText,
   Search,
   Trash2,
   X
@@ -29,6 +32,7 @@ type ModalState = {
   qty: number;
   comment: string;
   selections: Record<string, string[]>;
+  editIndex?: number;
 };
 
 type PaymentState = {
@@ -38,6 +42,7 @@ type PaymentState = {
 
 export function PosClient({
   merchantName,
+  staffName,
   categories,
   items,
   tags,
@@ -45,6 +50,7 @@ export function PosClient({
   embedded = false
 }: {
   merchantName: string;
+  staffName?: string;
   categories: Category[];
   items: PosMenuItem[];
   tags: Tag[];
@@ -79,6 +85,10 @@ export function PosClient({
     }
     return map;
   }, [items]);
+  const itemById = useMemo(
+    () => new Map(items.map((item) => [item.id, item])),
+    [items]
+  );
 
   const filteredItems = items.filter((item) => {
     const categoryMatch = activeCategory ? item.category_id === activeCategory : true;
@@ -105,14 +115,27 @@ export function PosClient({
   const change =
     payment.method === "cash" ? roundMoney(Number(payment.tendered || 0) - totals.total) : 0;
 
-  function openItem(item: PosMenuItem) {
+  function openItem(item: PosMenuItem, existing?: PosOrderItem, editIndex?: number) {
     if (!item.is_available) return;
     const initialSelections: Record<string, string[]> = {};
     for (const group of item.modifierGroups) {
-      initialSelections[group.id] =
-        group.required && group.modifiers[0] ? [group.modifiers[0].id] : [];
+      const existingSelections =
+        existing?.modifiers
+          .filter((modifier) => modifier.group_id === group.id)
+          .map((modifier) => modifier.modifier_id) ?? [];
+      initialSelections[group.id] = existingSelections.length
+        ? existingSelections
+        : group.required && group.modifiers[0]
+          ? [group.modifiers[0].id]
+          : [];
     }
-    setModal({ item, qty: 1, comment: "", selections: initialSelections });
+    setModal({
+      item,
+      qty: existing?.qty ?? 1,
+      comment: existing?.comment ?? "",
+      selections: initialSelections,
+      editIndex
+    });
   }
 
   function addSimpleItem(item: PosMenuItem) {
@@ -130,9 +153,9 @@ export function PosClient({
     ]);
   }
 
-  function openOrderItem(orderItem: PosOrderItem) {
+  function openOrderItem(orderItem: PosOrderItem, index: number) {
     const source = items.find((item) => item.id === orderItem.item_id);
-    if (source) openItem(source);
+    if (source) openItem(source, orderItem, index);
   }
 
   function selectedModifiers(state: ModalState) {
@@ -163,18 +186,27 @@ export function PosClient({
       return;
     }
 
-    setOrderItems((current) => [
-      ...current,
-      {
-        item_id: modal.item.id,
-        name: modal.item.name,
-        qty: modal.qty,
-        price: Number(modal.item.price),
-        modifiers: selectedModifiers(modal),
-        comment: modal.comment
-      }
-    ]);
+    const nextItem: PosOrderItem = {
+      item_id: modal.item.id,
+      name: modal.item.name,
+      qty: modal.qty,
+      price: Number(modal.item.price),
+      modifiers: selectedModifiers(modal),
+      comment: modal.comment
+    };
+
+    setOrderItems((current) =>
+      typeof modal.editIndex === "number"
+        ? current.map((item, index) => (index === modal.editIndex ? nextItem : item))
+        : [...current, nextItem]
+    );
     setError("");
+    setModal(null);
+  }
+
+  function removeModalItem() {
+    if (typeof modal?.editIndex !== "number") return;
+    removeItem(modal.editIndex);
     setModal(null);
   }
 
@@ -224,18 +256,19 @@ export function PosClient({
   }
 
   return (
-    <div className="grid min-h-0 grid-cols-1 lg:grid-cols-[65%_35%]">
-      <section
-        className={`flex min-h-0 flex-col overflow-y-auto bg-cream p-4 ${
-          embedded ? "min-h-[calc(100dvh-9rem)]" : "h-[calc(100vh-56px)]"
-        }`}
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-base font-bold text-ink">Menu</h1>
-            <p className="text-xs text-muted">{merchantName}</p>
+    <div
+      className={`grid min-h-0 bg-cream lg:grid-cols-[minmax(0,1fr)_400px] ${
+        embedded ? "min-h-[calc(100dvh-9rem)]" : "h-[calc(100vh-64px)]"
+      }`}
+    >
+      <section className="flex min-h-0 flex-col overflow-y-auto bg-cream">
+        <div className="flex items-center justify-between gap-4 px-6 pb-3 pt-4">
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-semibold text-ink">
+              {staffName ?? merchantName}
+            </h1>
           </div>
-          <div className="flex h-10 min-w-[220px] items-center rounded-[10px] border border-line bg-white px-3 focus-within:border-ink focus-within:ring-4 focus-within:ring-ink/10">
+          <div className="flex h-10 w-[280px] shrink-0 items-center rounded-[10px] border border-line bg-white px-3 focus-within:border-ink focus-within:ring-4 focus-within:ring-ink/10">
             <Search className="h-4 w-4 text-muted" />
             <input
               value={query}
@@ -246,164 +279,229 @@ export function PosClient({
           </div>
         </div>
 
-        <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              type="button"
-              onClick={() => setActiveCategory(category.id)}
-              className={`flex h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-sm font-semibold ${
-                activeCategory === category.id
-                  ? "border-ink bg-ink text-white"
-                  : "border-line bg-white text-ink hover:bg-[#FAFAFA]"
-              }`}
-            >
-              {category.name}
-              <span className={`rounded-full px-1.5 py-0.5 text-[11px] ${
-                activeCategory === category.id ? "bg-white/20 text-white" : "bg-[#F0F0F0] text-muted"
-              }`}>
-                {categoryCounts.get(category.id) ?? 0}
-              </span>
-            </button>
-          ))}
+        <div className="flex gap-2 overflow-x-auto px-6 pb-4">
+          {categories.map((category) => {
+            const active = activeCategory === category.id;
+            return (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() => setActiveCategory(category.id)}
+                className={`flex h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-sm font-semibold ${
+                  active
+                    ? "border-ink bg-ink text-white"
+                    : "border-line bg-white text-ink hover:bg-[#FAFAFA]"
+                }`}
+              >
+                <span>{category.name}</span>
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-[11px] ${
+                    active ? "bg-white/20 text-white" : "bg-[#F0F0F0] text-muted"
+                  }`}
+                >
+                  {categoryCounts.get(category.id) ?? 0}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        <div className="mt-2 grid grid-cols-2 gap-3 pr-1 md:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-3 gap-3 px-6 pb-6 xl:grid-cols-4">
           {filteredItems.map((item) => (
-            <button
+            <article
               key={item.id}
-              type="button"
-              onClick={() => addSimpleItem(item)}
-              className={`relative overflow-hidden rounded-[12px] border border-line bg-white text-left transition hover:shadow-lift ${
+              className={`relative h-[220px] overflow-hidden rounded-[12px] border border-line bg-white text-left shadow-soft transition hover:shadow-lift ${
                 !item.is_available ? "opacity-45" : ""
               }`}
             >
-              <div className="relative h-[120px] bg-[#F5F5F5]">
-                <ItemImage item={item} />
-                <span className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-lg bg-white text-muted shadow-sm">
-                  <Maximize2 className="h-3.5 w-3.5" />
-                </span>
-                {orderQtyByItem.get(item.id) ? (
-                  <span className="absolute left-2 top-2 flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-ink px-1.5 text-xs font-bold text-white">
-                    {orderQtyByItem.get(item.id)}
+              <button
+                type="button"
+                onClick={() => addSimpleItem(item)}
+                className="block h-full w-full text-left"
+              >
+                <div className="relative h-[143px] bg-[#F5F5F5]">
+                  <ItemImage item={item} />
+                  <span className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-lg bg-white text-muted shadow-sm">
+                    <Maximize2 className="h-3.5 w-3.5" />
                   </span>
-                ) : null}
-              </div>
-              <div className="relative min-h-[64px] p-3 pr-12">
-                <p className="line-clamp-1 text-sm font-semibold text-ink">{item.name}</p>
-                <p className="mt-1 text-[13px] font-medium text-muted">
-                  {formatCurrency(Number(item.price))}
-                </p>
-              </div>
-              <span
+                  {orderQtyByItem.get(item.id) ? (
+                    <span className="absolute left-2 top-2 flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-ink px-1.5 text-xs font-bold text-white">
+                      {orderQtyByItem.get(item.id)}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="min-h-[77px] p-3 pr-14">
+                  <p className="truncate text-sm font-semibold text-ink">{item.name}</p>
+                  <p className="mt-1 text-[13px] font-semibold text-blue">
+                    {formatCurrency(Number(item.price))}
+                  </p>
+                </div>
+              </button>
+              <button
+                type="button"
                 onClick={(event) => {
                   event.stopPropagation();
                   openItem(item);
                 }}
-                className="absolute bottom-3 right-3 flex h-8 w-8 items-center justify-center rounded-lg bg-ink text-white"
+                className="absolute right-3 top-[125px] flex h-9 w-9 items-center justify-center rounded-full bg-blue text-white shadow-soft"
+                aria-label={`Customize ${item.name}`}
               >
                 <Plus className="h-5 w-5" />
-              </span>
+              </button>
               {!item.is_available ? (
                 <span className="absolute inset-0 flex items-center justify-center bg-white/70 text-sm font-extrabold text-muted">
                   Unavailable
                 </span>
               ) : null}
-            </button>
+            </article>
           ))}
         </div>
       </section>
 
-      <aside className="flex h-[calc(100vh-56px)] min-h-0 flex-col border-l border-line bg-white">
-        <div className="flex h-12 items-center justify-between gap-2 border-b border-line px-4">
-          <div>
-            <p className="text-[13px] font-bold uppercase tracking-wide text-muted">Order Details</p>
+      <aside className="flex h-full min-h-0 w-[400px] flex-col border-l border-line bg-white">
+        <div className="flex items-center justify-between gap-3 px-5 pt-5">
+          <p className="text-[13px] font-bold uppercase tracking-wide text-muted">
+            Order Details
+          </p>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={resetOrder}
+              className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-line bg-white px-2.5 text-xs font-bold text-ink hover:bg-[#FAFAFA]"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Reset Order
+            </button>
+            <label className="relative">
+              <select
+                value={serviceMode}
+                onChange={(event) =>
+                  setServiceMode(event.target.value as "dine-in" | "takeaway")
+                }
+                className="h-8 appearance-none rounded-[10px] border border-line bg-white py-0 pl-3 pr-7 text-xs font-bold text-ink"
+              >
+                <option value="dine-in">Dine In</option>
+                <option value="takeaway">Takeaway</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
+            </label>
           </div>
-          <button
-            type="button"
-            onClick={resetOrder}
-            className="h-8 rounded-[10px] border border-line bg-white px-3 text-xs font-bold text-ink hover:bg-[#FAFAFA]"
-          >
-            Reset Order
-          </button>
-          <select
-            value={serviceMode}
-            onChange={(event) => setServiceMode(event.target.value as "dine-in" | "takeaway")}
-            className="h-8 rounded-[10px] border border-line bg-white px-2 text-xs font-bold text-ink"
-          >
-            <option value="dine-in">Dine In</option>
-            <option value="takeaway">Takeaway</option>
-          </select>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
           {orderItems.length === 0 ? (
-            <div className="flex h-full items-center justify-center p-8 text-center">
+            <div className="flex h-full items-center justify-center text-center">
               <div>
-                <p className="text-sm font-bold text-ink">No items yet</p>
-                <p className="mt-1 text-sm text-muted">Tap menu items to build an order.</p>
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blueSoft text-blue">
+                  <ReceiptText className="h-5 w-5" />
+                </div>
+                <p className="mt-3 text-sm font-bold text-ink">No items yet</p>
+                <p className="mt-1 text-sm text-muted">Tap any menu item to add it</p>
               </div>
             </div>
           ) : (
-            orderItems.map((item, index) => {
-              const lineTotal =
-                (item.price +
-                  item.modifiers.reduce((sum, modifier) => sum + modifier.price_delta, 0)) *
-                item.qty;
-              return (
-                <div key={`${item.item_id}-${index}`} className="grid grid-cols-[44px_1fr_auto_auto] gap-3 border-b border-line p-3">
-                  <OrderThumb name={item.name} />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-ink">{item.name}</p>
-                      {item.modifiers.length > 0 ? (
-                        <p className="mt-0.5 truncate text-xs text-muted">
-                          {item.modifiers.map((modifier) => modifier.name).join(", ")}
-                        </p>
-                      ) : null}
-                      {item.comment ? (
-                        <p className="mt-0.5 truncate text-xs italic text-muted">{item.comment}</p>
-                      ) : null}
-                    <p className="mt-2 text-sm font-bold text-ink">{formatCurrency(lineTotal)}</p>
+            <div className="divide-y divide-[#F3F4F6]">
+              {orderItems.map((item, index) => {
+                const source = itemById.get(item.item_id);
+                const lineTotal =
+                  (item.price +
+                    item.modifiers.reduce((sum, modifier) => sum + modifier.price_delta, 0)) *
+                  item.qty;
+                return (
+                  <div key={`${item.item_id}-${index}`} className="py-3">
+                    <div className="grid grid-cols-[44px_1fr_auto] gap-3">
+                      <OrderThumb item={source} name={item.name} />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-ink">{item.name}</p>
+                        {item.modifiers.length > 0 ? (
+                          <p className="mt-0.5 truncate text-xs text-muted">
+                            {item.modifiers.map((modifier) => modifier.name).join(", ")}
+                          </p>
+                        ) : (
+                          <p className="mt-0.5 text-xs text-muted">No modifiers</p>
+                        )}
+                        {item.comment ? (
+                          <p className="mt-0.5 truncate text-xs italic text-muted">
+                            {item.comment}
+                          </p>
+                        ) : null}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeItem(index)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-600"
+                        aria-label={`Remove ${item.name}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <button type="button" onClick={() => openOrderItem(item)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-white text-muted hover:text-ink">
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <div className="flex h-8 items-center rounded-lg border border-line">
-                      <button type="button" onClick={() => updateQty(index, -1)} className="flex h-full w-8 items-center justify-center text-muted hover:text-ink">
-                        <Minus className="h-4 w-4" />
-                      </button>
-                      <span className="w-8 text-center text-sm font-bold">{item.qty}</span>
-                      <button type="button" onClick={() => updateQty(index, 1)} className="flex h-full w-8 items-center justify-center text-muted hover:text-ink">
-                        <Plus className="h-4 w-4" />
-                      </button>
+                    <div className="mt-2 grid grid-cols-[44px_1fr_auto] items-center gap-3">
+                      <div />
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openOrderItem(item, index)}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-white text-muted hover:text-ink"
+                          aria-label={`Edit ${item.name}`}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <div className="flex h-8 items-center rounded-lg border border-line">
+                          <button
+                            type="button"
+                            onClick={() => updateQty(index, -1)}
+                            className="flex h-full w-8 items-center justify-center text-muted hover:text-ink"
+                            aria-label={`Decrease ${item.name}`}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="w-8 text-center text-sm font-bold">{item.qty}</span>
+                          <button
+                            type="button"
+                            onClick={() => updateQty(index, 1)}
+                            className="flex h-full w-8 items-center justify-center text-muted hover:text-ink"
+                            aria-label={`Increase ${item.name}`}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-right text-sm font-bold text-ink">
+                        {formatCurrency(lineTotal)}
+                      </p>
                     </div>
                   </div>
-                  <button type="button" onClick={() => removeItem(index)} className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-50 text-red-600">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                </div>
-              );
-            })
+                );
+              })}
+            </div>
           )}
         </div>
 
-        <div className="border-t border-line p-4">
-          <TotalRow label="Subtotal" value={formatCurrency(totals.subtotal)} />
+        <div className="border-t border-line px-5 py-4">
+          <TotalRow label="Sub Total" value={formatCurrency(totals.subtotal)} />
           <TotalRow label="Discount" value="-" />
           <TotalRow label="Tax 18%" value={formatCurrency(totals.vat)} />
-          <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
-            <span className="text-[15px] font-semibold text-ink">Total Payment</span>
-            <span className="text-xl font-bold text-ink">
-              {formatCurrency(totals.total)}
-            </span>
+          <div className="mt-3 border-t border-line pt-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[15px] font-semibold text-ink">Total Payment</span>
+              <span className="text-[22px] font-bold text-ink">
+                {formatCurrency(totals.total)}
+              </span>
+            </div>
           </div>
-          <label className="mt-3 grid grid-cols-[1fr_auto] items-center gap-2 text-sm font-semibold text-ink">
-            Select Counter
+          <button
+            type="button"
+            className="mt-3 flex h-10 w-full items-center justify-between rounded-[10px] text-sm font-semibold text-ink"
+          >
+            <span>Add Discount</span>
+            <ChevronRight className="h-4 w-4 text-muted" />
+          </button>
+          <label className="mt-2 block">
+            <span className="sr-only">Select Counter</span>
             <select
               value={selectedTagId}
               onChange={(event) => setSelectedTagId(event.target.value)}
-              className="h-9 rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink"
+              className="h-11 w-full rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink"
             >
               {tags.map((tag) => (
                 <option key={tag.id} value={tag.id}>
@@ -412,8 +510,12 @@ export function PosClient({
               ))}
             </select>
           </label>
-          {error ? <p className="mt-3 rounded-[10px] bg-red-50 px-3 py-2 text-sm font-bold text-red-700">{error}</p> : null}
-          <div className="mt-4 grid grid-cols-[2fr_3fr] gap-2">
+          {error ? (
+            <p className="mt-3 rounded-[10px] bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
+              {error}
+            </p>
+          ) : null}
+          <div className="mt-4 grid grid-cols-[38fr_62fr] gap-2">
             <button
               type="button"
               disabled={orderItems.length === 0 || isPending}
@@ -426,7 +528,7 @@ export function PosClient({
               type="button"
               disabled={orderItems.length === 0 || isPending}
               onClick={() => setPaymentOpen(true)}
-              className="h-12 rounded-[10px] bg-ink text-sm font-bold text-white transition hover:bg-clay disabled:opacity-40"
+              className="h-12 rounded-[10px] bg-blue text-sm font-bold text-white transition hover:bg-blueDark disabled:opacity-40"
             >
               Pay Now
             </button>
@@ -440,6 +542,7 @@ export function PosClient({
           setState={setModal}
           onClose={() => setModal(null)}
           onAdd={addModalItem}
+          onRemove={removeModalItem}
         />
       ) : null}
 
@@ -491,7 +594,17 @@ function ItemImage({ item }: { item: PosMenuItem }) {
   );
 }
 
-function OrderThumb({ name }: { name: string }) {
+function OrderThumb({ item, name }: { item?: PosMenuItem; name: string }) {
+  if (item?.image_url) {
+    return (
+      <img
+        src={item.image_url}
+        alt=""
+        className="h-11 w-11 rounded-[10px] object-cover"
+      />
+    );
+  }
+
   return (
     <div className="flex h-11 w-11 items-center justify-center rounded-[10px] bg-[#F5F5F5] text-sm font-bold text-muted">
       {name[0]?.toUpperCase()}
@@ -530,12 +643,14 @@ function ModifierModal({
   state,
   setState,
   onClose,
-  onAdd
+  onAdd,
+  onRemove
 }: {
   state: ModalState;
   setState: (state: ModalState) => void;
   onClose: () => void;
   onAdd: () => void;
+  onRemove: () => void;
 }) {
   const selectedMods = state.item.modifierGroups.flatMap((group) =>
     (state.selections[group.id] ?? [])
@@ -560,51 +675,77 @@ function ModifierModal({
     });
   }
 
+  const editing = typeof state.editIndex === "number";
+
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/30 p-0">
-      <div className="animate-tapp-fade max-h-[92vh] w-full overflow-y-auto rounded-t-[24px] bg-white p-6 shadow-lift md:max-w-2xl">
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/30 p-0 md:items-center md:p-4">
+      <div className="animate-tapp-fade max-h-[92vh] w-full max-w-[480px] overflow-y-auto rounded-t-[24px] bg-white p-6 shadow-lift md:rounded-[24px]">
         <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-[#DDDDDD]" />
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 items-center gap-4">
             <ItemImageThumb item={state.item} />
-            <div>
-              <h2 className="text-xl font-semibold text-ink">{state.item.name}</h2>
-              <p className="text-sm text-muted">{formatCurrency(Number(state.item.price))} base</p>
+            <div className="min-w-0">
+              <h2 className="truncate text-xl font-semibold text-ink">{state.item.name}</h2>
+              <p className="text-sm text-muted">
+                {formatCurrency(Number(state.item.price))} base
+              </p>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-white">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line bg-white"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="mt-6 space-y-5 border-t border-line pt-5">
-          {state.item.modifierGroups.map((group) => (
-            <section key={group.id}>
+          {state.item.modifierGroups.length > 0 ? (
+            state.item.modifierGroups.map((group) => (
+              <section key={group.id}>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-muted">
+                  {group.name} {group.required ? <span className="text-red-600">*</span> : null}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {group.modifiers.map((modifier) => {
+                    const selected = (state.selections[group.id] ?? []).includes(modifier.id);
+                    return (
+                      <button
+                        key={modifier.id}
+                        type="button"
+                        onClick={() => toggle(group.id, modifier.id, group.multi_select)}
+                        className={`min-h-10 rounded-full border px-4 text-sm font-bold ${
+                          selected
+                            ? "border-ink bg-ink text-white"
+                            : "border-line bg-white text-ink"
+                        }`}
+                      >
+                        {modifier.name}
+                        {Number(modifier.price_delta)
+                          ? ` +${formatCurrency(Number(modifier.price_delta))}`
+                          : ""}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ))
+          ) : (
+            <section>
               <p className="text-[11px] font-bold uppercase tracking-wide text-muted">
-                {group.name} {group.required ? <span className="text-red-600">*</span> : null}
+                Ingredients
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
-                {group.modifiers.map((modifier) => {
-                  const selected = (state.selections[group.id] ?? []).includes(modifier.id);
-                  return (
-                    <button
-                      key={modifier.id}
-                      type="button"
-                      onClick={() => toggle(group.id, modifier.id, group.multi_select)}
-                      className={`min-h-12 rounded-full border px-4 text-sm font-extrabold ${
-                        selected
-                          ? "border-ink bg-ink text-white"
-                          : "border-line bg-white text-ink"
-                      }`}
-                    >
-                      {modifier.name}
-                      {Number(modifier.price_delta) ? ` +${formatCurrency(Number(modifier.price_delta))}` : ""}
-                    </button>
-                  );
-                })}
+                <span className="rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-ink">
+                  Standard
+                </span>
+                <span className="rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-ink">
+                  No changes
+                </span>
               </div>
             </section>
-          ))}
+          )}
         </div>
 
         <textarea
@@ -616,33 +757,54 @@ function ModifierModal({
 
         <div className="mt-5 flex items-center justify-between gap-4">
           <div className="flex h-11 items-center gap-2">
-            <button type="button" onClick={() => setState({ ...state, qty: Math.max(1, state.qty - 1) })} className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F0F0F0]">
+            <button
+              type="button"
+              onClick={() => setState({ ...state, qty: Math.max(1, state.qty - 1) })}
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F0F0F0]"
+            >
               <Minus className="h-4 w-4" />
             </button>
             <span className="w-8 text-center text-lg font-extrabold">{state.qty}</span>
-            <button type="button" onClick={() => setState({ ...state, qty: state.qty + 1 })} className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F0F0F0]">
+            <button
+              type="button"
+              onClick={() => setState({ ...state, qty: state.qty + 1 })}
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F0F0F0]"
+            >
               <Plus className="h-4 w-4" />
             </button>
           </div>
-          <p className="text-2xl font-extrabold text-ink">
-            {formatCurrency(unitPrice * state.qty)}
-          </p>
+          <div className="text-right">
+            <p className="text-xs font-semibold text-muted">Live total</p>
+            <p className="text-2xl font-extrabold text-ink">
+              {formatCurrency(unitPrice * state.qty)}
+            </p>
+          </div>
         </div>
 
         <button
           type="button"
           onClick={onAdd}
-          className="mt-5 h-[52px] w-full rounded-[10px] bg-ink text-base font-extrabold text-white"
+          className="mt-5 h-[52px] w-full rounded-[10px] bg-blue text-base font-extrabold text-white"
         >
-          Add to order
+          {editing ? "Update order" : "Add to order"}
         </button>
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-3 w-full text-center text-sm font-semibold text-muted"
-        >
-          Cancel
-        </button>
+        {editing ? (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="mt-3 h-10 w-full rounded-[10px] text-sm font-bold text-red-600"
+          >
+            Remove
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-3 w-full text-center text-sm font-semibold text-muted"
+          >
+            Cancel
+          </button>
+        )}
       </div>
     </div>
   );
