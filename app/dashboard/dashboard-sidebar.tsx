@@ -21,10 +21,12 @@ const navItems = [
 
 export function DashboardSidebar({
   merchantName,
-  merchantEmail
+  merchantEmail,
+  activeHref
 }: {
   merchantName: string;
   merchantEmail: string;
+  activeHref?: string;
 }) {
   const initials =
     merchantName
@@ -49,7 +51,11 @@ export function DashboardSidebar({
             <Link
               key={`${item.href}-${item.label}`}
               href={href}
-              className="flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-white/50 transition hover:bg-white/10 hover:text-white/80"
+              className={`flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-semibold transition ${
+                activeHref === item.href
+                  ? "bg-white/10 text-white"
+                  : "text-white/50 hover:bg-white/10 hover:text-white/80"
+              }`}
             >
               <Icon className="h-4 w-4" />
               {item.label}

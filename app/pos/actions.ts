@@ -395,3 +395,71 @@ export async function deleteModifier(formData: FormData) {
   revalidateMenuPaths();
   redirect(menuPath(staff, "?tab=modifiers"));
 }
+
+export async function loadSampleMenu() {
+  const { supabase, merchant, staff } = await getMerchantAccessContext();
+
+  const { count } = await supabase
+    .from("categories")
+    .select("id", { count: "exact", head: true })
+    .eq("merchant_id", merchant.id);
+
+  if ((count ?? 0) > 0) {
+    redirect(menuPath(staff, "?error=Sample%20menu%20can%20only%20load%20before%20categories%20exist"));
+  }
+
+  const sampleCategories = ["Coffee", "Snacks", "Pastries"];
+  const { data: createdCategories, error: categoryError } = await supabase
+    .from("categories")
+    .insert(
+      sampleCategories.map((name, index) => ({
+        merchant_id: merchant.id,
+        name,
+        sort_order: index
+      }))
+    )
+    .select("id,name")
+    .returns<Array<{ id: string; name: string }>>();
+
+  if (categoryError || !createdCategories) {
+    redirect(
+      menuPath(
+        staff,
+        `?error=${encodeURIComponent(categoryError?.message ?? "Sample categories could not be created")}`
+      )
+    );
+  }
+
+  const categoryIdByName = new Map(
+    createdCategories.map((category) => [category.name, category.id])
+  );
+  const sampleItems = [
+    { category: "Coffee", name: "Espresso", price: 2.2, sort_order: 0 },
+    { category: "Coffee", name: "Cappuccino", price: 3.4, sort_order: 1 },
+    { category: "Coffee", name: "Iced Latte", price: 3.8, sort_order: 2 },
+    { category: "Snacks", name: "Toastie", price: 5.5, sort_order: 0 },
+    { category: "Snacks", name: "Granola Bowl", price: 6.2, sort_order: 1 },
+    { category: "Pastries", name: "Croissant", price: 2.9, sort_order: 0 },
+    { category: "Pastries", name: "Cinnamon Roll", price: 3.6, sort_order: 1 }
+  ];
+
+  const { error: itemError } = await supabase.from("menu_items").insert(
+    sampleItems.map((item) => ({
+      merchant_id: merchant.id,
+      category_id: categoryIdByName.get(item.category) ?? createdCategories[0].id,
+      name: item.name,
+      price: item.price,
+      sort_order: item.sort_order,
+      is_available: true
+    }))
+  );
+
+  if (itemError) {
+    redirect(menuPath(staff, `?error=${encodeURIComponent(itemError.message)}`));
+  }
+
+  revalidatePath("/pos");
+  revalidatePath("/staff");
+  revalidateMenuPaths();
+  redirect(menuPath(staff, "?tab=items"));
+}

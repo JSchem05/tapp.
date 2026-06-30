@@ -1,3 +1,4 @@
+import { DashboardSidebar } from "@/app/dashboard/dashboard-sidebar";
 import { MenuBuilderClient } from "@/app/pos/menu/menu-builder-client";
 import { getOwnerContext } from "@/lib/merchant-context";
 import type {
@@ -46,15 +47,24 @@ export default async function PosMenuPage({
   ]);
 
   return (
-    <MenuBuilderClient
-      merchantName={merchant.name}
-      categories={categories ?? []}
-      items={items ?? []}
-      groups={groups ?? []}
-      modifiers={modifiers ?? []}
-      itemGroups={itemGroups ?? []}
-      initialTab={searchParams?.tab}
-      error={searchParams?.error}
-    />
+    <main className="min-h-screen bg-cream">
+      <DashboardSidebar
+        merchantName={merchant.name}
+        merchantEmail={merchant.email}
+        activeHref="/pos/menu"
+      />
+      <div className="min-h-screen lg:ml-[200px]">
+        <MenuBuilderClient
+          merchantName={merchant.name}
+          categories={categories ?? []}
+          items={items ?? []}
+          groups={groups ?? []}
+          modifiers={modifiers ?? []}
+          itemGroups={itemGroups ?? []}
+          initialTab={searchParams?.tab}
+          error={searchParams?.error}
+        />
+      </div>
+    </main>
   );
 }
