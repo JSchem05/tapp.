@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { completePosOrder } from "@/app/pos/actions";
-import type { PosMenuItem } from "@/app/pos/page";
+import type { PosMenuItem } from "@/lib/pos/data";
 import { formatCurrency, roundMoney } from "@/lib/money";
 import type {
   Category,
@@ -14,7 +14,6 @@ import type {
 } from "@/lib/types";
 import {
   Check,
-  ChevronRight,
   Maximize2,
   Minus,
   Pencil,
@@ -404,9 +403,6 @@ export function PosClient({
               {formatCurrency(totals.total)}
             </span>
           </div>
-          <button type="button" className="mt-3 flex h-10 w-full items-center justify-between rounded-[10px] bg-[#F0F0F0] px-3 text-sm font-semibold text-ink">
-            Add Discount <ChevronRight className="h-4 w-4" />
-          </button>
           <label className="mt-3 grid grid-cols-[1fr_auto] items-center gap-2 text-sm font-semibold text-ink">
             Select Counter
             <select

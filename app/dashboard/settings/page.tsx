@@ -2,16 +2,17 @@ import {
   addStaffMember,
   connectSumUp,
   deleteStaffMember,
+  regenerateOwnerDeviceCode,
+  regenerateStaffDeviceCode,
   updateMerchantSettings
 } from "@/app/dashboard/actions";
 import { CopyButton } from "@/components/copy-button";
 import { LogoUploadField } from "@/components/logo-upload-field";
 import { Card, Input, Label } from "@/components/ui";
-import { getAuthedMerchant } from "@/lib/auth";
+import { getOwnerContext } from "@/lib/merchant-context";
 import type { PosConnection, Staff, Tag } from "@/lib/types";
 import { getBaseUrl } from "@/lib/url";
 import {
-  AlertTriangle,
   Cable,
   Globe,
   Instagram,
@@ -31,7 +32,7 @@ export default async function SettingsPage({
 }: {
   searchParams?: { saved?: string; error?: string };
 }) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   const { data: tags } = await supabase
     .from("tags")
     .select("*")
@@ -201,6 +202,26 @@ export default async function SettingsPage({
 
       <Card className="p-6">
         <SectionHeader
+          icon={<Cable className="h-5 w-5" />}
+          title="Device codes"
+          description="Share these once per device. Regenerating invalidates the old code immediately."
+        />
+        <div className="mt-5 space-y-4">
+          <DeviceCodeRow
+            label="Owner code"
+            code={merchant.owner_code}
+            regenerateAction={regenerateOwnerDeviceCode}
+          />
+          <DeviceCodeRow
+            label="Staff code"
+            code={merchant.staff_code}
+            regenerateAction={regenerateStaffDeviceCode}
+          />
+        </div>
+      </Card>
+
+      <Card className="p-6">
+        <SectionHeader
           icon={<Wifi className="h-5 w-5" />}
           title="NFC Tags"
           description="Permanent URLs for each counter puck."
@@ -295,22 +316,6 @@ export default async function SettingsPage({
             </button>
           </form>
         </div>
-      </Card>
-
-      <Card className="border-red-100 bg-red-50/70 p-6">
-        <SectionHeader
-          icon={<AlertTriangle className="h-5 w-5" />}
-          title="Danger Zone"
-          description="Delete account controls will be enabled once billing and exports are ready."
-          tone="danger"
-        />
-        <button
-          type="button"
-          disabled
-          className="mt-5 rounded-[10px] border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 opacity-60"
-        >
-          Delete account
-        </button>
       </Card>
     </div>
   );
@@ -415,6 +420,35 @@ function ToggleField({
         <span className="absolute left-1 h-5 w-5 rounded-full bg-muted/50 transition peer-checked:translate-x-5 peer-checked:bg-white" />
       </span>
     </label>
+  );
+}
+
+function DeviceCodeRow({
+  label,
+  code,
+  regenerateAction
+}: {
+  label: string;
+  code: string | null;
+  regenerateAction: () => Promise<void>;
+}) {
+  return (
+    <div className="flex flex-col gap-3 rounded-[14px] border border-line bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="text-sm font-semibold text-ink">{label}</p>
+        <p className="mt-1 font-mono text-lg font-bold tracking-[0.2em] text-ink">
+          {code ?? "Not set"}
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        {code ? <CopyButton value={code} /> : null}
+        <form action={regenerateAction}>
+          <button className="h-10 rounded-[10px] border border-line bg-white px-4 text-sm font-semibold text-ink hover:bg-[#FAFAFA]">
+            Regenerate
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
 

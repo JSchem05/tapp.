@@ -35,6 +35,8 @@ export type Merchant = {
   show_email_opt_in: boolean;
   show_social: boolean;
   show_info: boolean;
+  owner_code: string | null;
+  staff_code: string | null;
   created_at: string;
 };
 

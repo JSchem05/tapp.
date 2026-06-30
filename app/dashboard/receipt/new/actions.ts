@@ -1,6 +1,6 @@
 "use server";
 
-import { getAuthedMerchant } from "@/lib/auth";
+import { getOwnerContext } from "@/lib/merchant-context";
 import { VAT_RATE, calculateReceiptTotals, roundMoney } from "@/lib/money";
 import type { PaymentMethod, Receipt, ReceiptItem, Staff, Tag } from "@/lib/types";
 import { redirect } from "next/navigation";
@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 const PAYMENT_METHODS = new Set(["Card", "Cash", "Other"]);
 
 export async function createReceipt(formData: FormData) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   const tagId = String(formData.get("tag_id") ?? "");
   const paymentMethod = String(formData.get("payment_method") ?? "Card");
   const rawItems = String(formData.get("items") ?? "[]");

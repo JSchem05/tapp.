@@ -1,6 +1,4 @@
-"use client";
-
-import { logout } from "@/app/dashboard/actions";
+import { logoutDevice } from "@/app/device/actions";
 import {
   BarChart3,
   Grid3X3,
@@ -11,14 +9,13 @@ import {
   Settings
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home, exact: true },
   { href: "/pos", label: "POS", icon: Grid3X3, exact: true },
   { href: "/pos/menu", label: "Menu", icon: MenuSquare },
-  { href: "/dashboard#receipts", label: "Receipts", icon: ReceiptText, section: true },
-  { href: "/dashboard#analytics", label: "Analytics", icon: BarChart3, section: true },
+  { href: "/dashboard/receipts", label: "Receipts", icon: ReceiptText },
+  { href: "/dashboard", label: "Analytics", icon: BarChart3, hash: "#analytics" },
   { href: "/dashboard/settings", label: "Settings", icon: Settings }
 ];
 
@@ -29,7 +26,6 @@ export function DashboardSidebar({
   merchantName: string;
   merchantEmail: string;
 }) {
-  const pathname = usePathname();
   const initials =
     merchantName
       .split(/\s+/)
@@ -47,21 +43,13 @@ export function DashboardSidebar({
 
       <nav className="mt-8 space-y-1">
         {navItems.map((item) => {
-          const active = item.section
-            ? false
-            : item.exact
-              ? pathname === item.href
-              : pathname.startsWith(item.href);
           const Icon = item.icon;
+          const href = item.hash ? `${item.href}${item.hash}` : item.href;
           return (
             <Link
               key={`${item.href}-${item.label}`}
-              href={item.href}
-              className={`flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-semibold transition ${
-                active
-                  ? "bg-white/10 text-white"
-                  : "text-white/50 hover:text-white/80"
-              }`}
+              href={href}
+              className="flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-white/50 transition hover:bg-white/10 hover:text-white/80"
             >
               <Icon className="h-4 w-4" />
               {item.label}
@@ -82,10 +70,10 @@ export function DashboardSidebar({
             </div>
           </div>
         </div>
-        <form action={logout} className="mt-3">
+        <form action={logoutDevice} className="mt-3">
           <button className="flex h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-semibold text-white/55 transition hover:bg-white/10 hover:text-white">
             <LogOut className="h-4 w-4" />
-            Log out
+            Log out this device
           </button>
         </form>
       </div>

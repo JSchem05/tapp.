@@ -1,18 +1,26 @@
 "use server";
 
-import { getAuthedMerchant } from "@/lib/auth";
+import { clearDeviceSession } from "@/lib/device-session";
+import { generateDeviceCode } from "@/lib/device-codes";
+import { getOwnerContext } from "@/lib/merchant-context";
+import { createClient } from "@/lib/supabase/server";
 import type { PosConnection, Staff } from "@/lib/types";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 export async function logout() {
-  const { supabase } = await getAuthedMerchant();
+  const supabase = createClient();
   await supabase.auth.signOut();
-  redirect("/login");
+  await clearDeviceSession();
+  redirect("/device");
+}
+
+export async function logoutDevice() {
+  return logout();
 }
 
 export async function updateMerchantSettings(formData: FormData) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   const name = String(formData.get("name") ?? "").trim();
   const logo = formData.get("logo");
 
@@ -102,7 +110,7 @@ function normalizeInstagram(value: string | null) {
 }
 
 export async function createTag(formData: FormData) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   const label = String(formData.get("label") ?? "").trim();
   const rawCode = String(formData.get("tag_code") ?? "").trim();
   const tagCode =
@@ -131,7 +139,7 @@ export async function createTag(formData: FormData) {
 }
 
 export async function setReceiptLive(formData: FormData) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   const receiptId = String(formData.get("receipt_id") ?? "");
   const tagId = String(formData.get("tag_id") ?? "");
 
@@ -166,7 +174,7 @@ export async function setReceiptLive(formData: FormData) {
 }
 
 export async function addStaffMember(formData: FormData) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   const name = String(formData.get("name") ?? "").trim();
   const pinCode = String(formData.get("pin_code") ?? "").trim();
 
@@ -189,7 +197,7 @@ export async function addStaffMember(formData: FormData) {
 }
 
 export async function deleteStaffMember(formData: FormData) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   const staffId = String(formData.get("staff_id") ?? "");
 
   if (!staffId) {
@@ -211,7 +219,7 @@ export async function deleteStaffMember(formData: FormData) {
 }
 
 export async function connectSumUp() {
-  const { merchant } = await getAuthedMerchant();
+  const { merchant } = await getOwnerContext();
   const clientId = process.env.SUMUP_CLIENT_ID;
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL ??
@@ -244,7 +252,7 @@ export async function upsertSumUpConnection(input: {
   refreshToken?: string | null;
   externalMerchantId?: string | null;
 }) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   if (merchant.id !== input.merchantId) {
     throw new Error("Merchant mismatch");
   }
@@ -280,8 +288,68 @@ export async function upsertSumUpConnection(input: {
   if (error) throw error;
 }
 
+export async function regenerateOwnerDeviceCode() {
+  const { supabase, merchant } = await getOwnerContext();
+  const code = await nextUniqueOwnerCode(supabase, merchant.id);
+  const { error } = await supabase
+    .from("merchants")
+    .update({ owner_code: code })
+    .eq("id", merchant.id);
+  if (error) {
+    redirect(`/dashboard/settings?error=${encodeURIComponent(error.message)}`);
+  }
+  revalidatePath("/dashboard/settings");
+  redirect("/dashboard/settings?saved=1");
+}
+
+export async function regenerateStaffDeviceCode() {
+  const { supabase, merchant } = await getOwnerContext();
+  const code = await nextUniqueStaffCode(supabase, merchant.id);
+  const { error } = await supabase
+    .from("merchants")
+    .update({ staff_code: code })
+    .eq("id", merchant.id);
+  if (error) {
+    redirect(`/dashboard/settings?error=${encodeURIComponent(error.message)}`);
+  }
+  revalidatePath("/dashboard/settings");
+  redirect("/dashboard/settings?saved=1");
+}
+
+async function nextUniqueOwnerCode(
+  supabase: Awaited<ReturnType<typeof getOwnerContext>>["supabase"],
+  merchantId: string
+) {
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const code = generateDeviceCode();
+    const { data } = await supabase
+      .from("merchants")
+      .select("id")
+      .eq("owner_code", code)
+      .maybeSingle<{ id: string }>();
+    if (!data || data.id === merchantId) return code;
+  }
+  throw new Error("Could not generate a unique owner code.");
+}
+
+async function nextUniqueStaffCode(
+  supabase: Awaited<ReturnType<typeof getOwnerContext>>["supabase"],
+  merchantId: string
+) {
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const code = generateDeviceCode();
+    const { data } = await supabase
+      .from("merchants")
+      .select("id")
+      .eq("staff_code", code)
+      .maybeSingle<{ id: string }>();
+    if (!data || data.id === merchantId) return code;
+  }
+  throw new Error("Could not generate a unique staff code.");
+}
+
 export async function getMerchantStaffByPin(pinCode: string) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   if (!/^\d{4}$/.test(pinCode)) return null;
   const { data } = await supabase
     .from("staff")

@@ -1,13 +1,42 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import {
+  clearDeviceSessionCookie,
+  DEVICE_COOKIE,
+  getDeviceSessionFromRequest,
+  parseDeviceSession
+} from "@/lib/device-session";
 import { getSupabaseKey, getSupabaseUrl } from "@/lib/supabase/env";
+import { NextResponse, type NextRequest } from "next/server";
+
+const PUBLIC_PREFIXES = ["/t/", "/r/", "/api/"];
+const PUBLIC_EXACT = new Set(["/device", "/login"]);
+
+function isPublicRoute(pathname: string) {
+  if (PUBLIC_EXACT.has(pathname)) return true;
+  return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+function isStaffRoute(pathname: string) {
+  return pathname === "/staff" || pathname.startsWith("/staff/");
+}
+
+function isOwnerRoute(pathname: string) {
+  return (
+    pathname === "/dashboard" ||
+    pathname.startsWith("/dashboard/") ||
+    pathname === "/pos" ||
+    pathname.startsWith("/pos/")
+  );
+}
 
 export async function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname;
-  const isProtectedRoute =
-    pathname.startsWith("/dashboard") || pathname.startsWith("/pos");
+  const { pathname } = request.nextUrl;
 
-  if (!isProtectedRoute) {
+  if (pathname === "/") {
+    return NextResponse.redirect(new URL("/device", request.url));
+  }
+
+  if (isPublicRoute(pathname)) {
     return NextResponse.next();
   }
 
@@ -15,7 +44,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  let supabaseResponse = NextResponse.next({
+  let response = NextResponse.next({
     request: {
       headers: request.headers
     }
@@ -33,24 +62,44 @@ export async function middleware(request: NextRequest) {
           options: CookieOptions;
         }[]
       ) {
-        cookiesToSet.forEach(({ name, value }) =>
-          request.cookies.set(name, value)
-        );
-        supabaseResponse = NextResponse.next({
-          request
-        });
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        response = NextResponse.next({ request });
         cookiesToSet.forEach(({ name, value, options }) =>
-          supabaseResponse.cookies.set(name, value, options)
+          response.cookies.set(name, value, options)
         );
       }
     }
   });
 
-  await supabase.auth.getUser();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
 
-  return supabaseResponse;
+  const deviceSession =
+    getDeviceSessionFromRequest(request) ??
+    parseDeviceSession(request.cookies.get(DEVICE_COOKIE)?.value);
+
+  const isOwner = Boolean(user) || deviceSession?.role === "owner";
+  const isStaff = deviceSession?.role === "staff" && !user;
+
+  if (!isOwner && !isStaff) {
+    if (isOwnerRoute(pathname) || isStaffRoute(pathname)) {
+      return NextResponse.redirect(new URL("/device", request.url));
+    }
+    return response;
+  }
+
+  if (isStaff && isOwnerRoute(pathname)) {
+    return NextResponse.redirect(new URL("/staff", request.url));
+  }
+
+  if (isOwner && isStaffRoute(pathname)) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  return response;
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/pos/:path*"]
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"]
 };

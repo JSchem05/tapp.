@@ -1,9 +1,8 @@
-import { login } from "@/app/login/actions";
-import { LoginButton } from "@/app/login/login-button";
+import { loginWithDeviceCode } from "@/app/device/actions";
 import { Card, Input, Label } from "@/components/ui";
 import Link from "next/link";
 
-export default function LoginPage({
+export default function DeviceLoginPage({
   searchParams
 }: {
   searchParams?: { error?: string };
@@ -17,29 +16,20 @@ export default function LoginPage({
           </div>
           <h1 className="text-4xl font-bold tracking-tight text-ink">Tapp.</h1>
           <p className="mt-2 text-sm text-muted">
-            Merchant receipts, ready when the customer taps.
+            Enter your business code once on this device.
           </p>
         </div>
 
         <Card>
-          <form action={login} className="space-y-5">
+          <form action={loginWithDeviceCode} className="space-y-5">
             <div className="space-y-2">
-              <Label>Email</Label>
+              <Label>Enter your business code</Label>
               <Input
-                name="email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@business.com"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Password</Label>
-              <Input
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                placeholder="••••••••"
+                name="code"
+                autoComplete="off"
+                placeholder="ABC123"
+                maxLength={6}
+                className="text-center text-lg font-bold tracking-[0.3em] uppercase"
                 required
               />
             </div>
@@ -50,15 +40,18 @@ export default function LoginPage({
               </p>
             ) : null}
 
-            <LoginButton />
+            <button className="inline-flex h-12 w-full items-center justify-center rounded-[10px] bg-ink px-4 text-sm font-bold text-white transition hover:bg-clay hover:shadow-lift">
+              Continue
+            </button>
           </form>
-          <p className="mt-5 text-center text-sm text-muted">
-            Using a shared device?{" "}
-            <Link href="/device" className="font-semibold text-ink underline">
-              Enter business code
-            </Link>
-          </p>
         </Card>
+
+        <p className="mt-6 text-center text-sm text-muted">
+          Owner with email?{" "}
+          <Link href="/login" className="font-semibold text-ink underline">
+            Log in here
+          </Link>
+        </p>
       </div>
     </main>
   );

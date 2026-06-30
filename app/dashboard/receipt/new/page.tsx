@@ -2,7 +2,7 @@ import { ReceiptForm } from "@/app/dashboard/receipt/new/receipt-form";
 import { ReceiptSuccess } from "@/components/receipt-success";
 import { ReceiptView } from "@/components/receipt-view";
 import { Card } from "@/components/ui";
-import { getAuthedMerchant } from "@/lib/auth";
+import { getOwnerContext } from "@/lib/merchant-context";
 import type { Receipt, Tag } from "@/lib/types";
 import { getBaseUrl } from "@/lib/url";
 
@@ -13,7 +13,7 @@ export default async function NewReceiptPage({
 }: {
   searchParams?: { tag?: string; receipt?: string; awaiting?: string; error?: string };
 }) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   const { data: tags } = await supabase
     .from("tags")
     .select("*")

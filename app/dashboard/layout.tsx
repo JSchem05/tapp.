@@ -1,12 +1,12 @@
 import { DashboardSidebar } from "@/app/dashboard/dashboard-sidebar";
-import { getAuthedMerchant } from "@/lib/auth";
+import { getOwnerContext } from "@/lib/merchant-context";
 
 export default async function DashboardLayout({
   children
 }: {
   children: React.ReactNode;
 }) {
-  const { merchant } = await getAuthedMerchant();
+  const { merchant } = await getOwnerContext();
 
   return (
     <main className="min-h-screen bg-cream">

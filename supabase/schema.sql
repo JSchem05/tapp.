@@ -33,7 +33,9 @@ alter table public.merchants
   add column if not exists show_loyalty boolean default false,
   add column if not exists show_email_opt_in boolean default true,
   add column if not exists show_social boolean default true,
-  add column if not exists show_info boolean default true;
+  add column if not exists show_info boolean default true,
+  add column if not exists owner_code text unique,
+  add column if not exists staff_code text unique;
 
 create table if not exists public.tags (
   id uuid primary key default gen_random_uuid(),
@@ -500,19 +502,50 @@ create policy "Merchants can delete menu images"
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
+create or replace function public.generate_device_code()
+returns text
+language plpgsql
+as $$
+declare
+  chars constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  result text := '';
+  index int;
+begin
+  for index in 1..6 loop
+    result := result || substr(chars, floor(random() * length(chars) + 1)::int, 1);
+  end loop;
+  return result;
+end;
+$$;
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer set search_path = public
 as $$
+declare
+  next_owner_code text;
+  next_staff_code text;
 begin
-  insert into public.merchants (id, name, email, slug)
+  loop
+    next_owner_code := public.generate_device_code();
+    exit when not exists (select 1 from public.merchants where owner_code = next_owner_code);
+  end loop;
+
+  loop
+    next_staff_code := public.generate_device_code();
+    exit when not exists (select 1 from public.merchants where staff_code = next_staff_code);
+  end loop;
+
+  insert into public.merchants (id, name, email, slug, owner_code, staff_code)
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'business_name', split_part(new.email, '@', 1)),
     new.email,
     trim(both '-' from lower(regexp_replace(coalesce(new.raw_user_meta_data->>'business_name', split_part(new.email, '@', 1)), '[^a-zA-Z0-9]+', '-', 'g')))
-      || '-' || substr(new.id::text, 1, 8)
+      || '-' || substr(new.id::text, 1, 8),
+    next_owner_code,
+    next_staff_code
   )
   on conflict (id) do nothing;
   return new;
@@ -524,6 +557,31 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- Example seed after creating a Supabase Auth user:
--- insert into public.tags (merchant_id, tag_code, label)
--- values ('AUTH_USER_UUID', 'CAFE01', 'Main Counter');
+-- Backfill device codes for existing merchants.
+do $$
+declare
+  merchant_row record;
+  next_owner_code text;
+  next_staff_code text;
+begin
+  for merchant_row in
+    select id from public.merchants where owner_code is null or staff_code is null
+  loop
+    if (select owner_code from public.merchants where id = merchant_row.id) is null then
+      loop
+        next_owner_code := public.generate_device_code();
+        exit when not exists (select 1 from public.merchants where owner_code = next_owner_code);
+      end loop;
+      update public.merchants set owner_code = next_owner_code where id = merchant_row.id;
+    end if;
+
+    if (select staff_code from public.merchants where id = merchant_row.id) is null then
+      loop
+        next_staff_code := public.generate_device_code();
+        exit when not exists (select 1 from public.merchants where staff_code = next_staff_code);
+      end loop;
+      update public.merchants set staff_code = next_staff_code where id = merchant_row.id;
+    end if;
+  end loop;
+end
+$$;

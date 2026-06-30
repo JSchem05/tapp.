@@ -1,6 +1,6 @@
 "use server";
 
-import { getAuthedMerchant } from "@/lib/auth";
+import { getMerchantContext, getOwnerContext } from "@/lib/merchant-context";
 import { calculateReceiptTotals, roundMoney } from "@/lib/money";
 import type { PosOrderItem, Staff } from "@/lib/types";
 import { revalidatePath } from "next/cache";
@@ -37,7 +37,7 @@ function totalsForOrder(items: PosOrderItem[]) {
 }
 
 export async function completePosOrder(input: CompleteOrderInput) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getMerchantContext();
   const items = normalizeOrderItems(input.items);
   const status = input.status ?? "completed";
   const pinCode = String(input.staffPinCode ?? "").trim();
@@ -146,74 +146,13 @@ export async function completePosOrder(input: CompleteOrderInput) {
   }
 
   revalidatePath("/pos");
+  revalidatePath("/staff");
   revalidatePath("/dashboard");
   return { status: "completed" as const, receiptId: receipt.id };
 }
 
-export async function loadSampleMenu() {
-  const { supabase, merchant } = await getAuthedMerchant();
-  const samples: { name: string; items: [string, number][] }[] = [
-    {
-      name: "Coffee",
-      items: [
-        ["Espresso", 2.4],
-        ["Flat White", 3.2],
-        ["Cappuccino", 3.1]
-      ]
-    },
-    {
-      name: "Snacks",
-      items: [
-        ["Toastie", 5.8],
-        ["Granola Bowl", 6.5],
-        ["Fruit Cup", 4.4]
-      ]
-    },
-    {
-      name: "Pastries",
-      items: [
-        ["Croissant", 2.9],
-        ["Pain au Chocolat", 3.3],
-        ["Cinnamon Roll", 3.7]
-      ]
-    }
-  ];
-
-  for (let index = 0; index < samples.length; index += 1) {
-    const category = samples[index];
-    const { data } = await supabase
-      .from("categories")
-      .insert({
-        merchant_id: merchant.id,
-        name: category.name,
-        sort_order: index
-      })
-      .select("id")
-      .single<{ id: string }>();
-
-    if (data) {
-      await supabase.from("menu_items").insert(
-        category.items.map(([name, price], itemIndex) => ({
-          merchant_id: merchant.id,
-          category_id: data.id,
-          name,
-          price,
-          description: null,
-          image_url: null,
-          is_available: true,
-          sort_order: itemIndex
-        }))
-      );
-    }
-  }
-
-  revalidatePath("/pos");
-  revalidatePath("/pos/menu");
-  redirect("/pos");
-}
-
 export async function createCategory(formData: FormData) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   const name = String(formData.get("name") ?? "").trim();
 
   if (!name) redirect("/pos/menu?error=Category%20name%20is%20required");
@@ -235,7 +174,7 @@ export async function createCategory(formData: FormData) {
 }
 
 export async function updateCategory(formData: FormData) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   const id = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
 
@@ -252,7 +191,7 @@ export async function updateCategory(formData: FormData) {
 }
 
 export async function deleteCategory(formData: FormData) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   const id = String(formData.get("id") ?? "");
   await supabase.from("categories").delete().eq("id", id).eq("merchant_id", merchant.id);
   revalidatePath("/pos/menu");
@@ -260,7 +199,7 @@ export async function deleteCategory(formData: FormData) {
 }
 
 export async function updateCategoryOrder(ids: string[]) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   await Promise.all(
     ids.map((id, index) =>
       supabase
@@ -274,7 +213,7 @@ export async function updateCategoryOrder(ids: string[]) {
 }
 
 export async function saveMenuItem(formData: FormData) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   const id = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const categoryId = String(formData.get("category_id") ?? "");
@@ -353,7 +292,7 @@ export async function saveMenuItem(formData: FormData) {
 }
 
 export async function toggleMenuItemAvailability(formData: FormData) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   const id = String(formData.get("id") ?? "");
   const isAvailable = String(formData.get("is_available")) === "true";
   await supabase
@@ -366,7 +305,7 @@ export async function toggleMenuItemAvailability(formData: FormData) {
 }
 
 export async function deleteMenuItem(formData: FormData) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   const id = String(formData.get("id") ?? "");
   await supabase.from("menu_items").delete().eq("id", id).eq("merchant_id", merchant.id);
   revalidatePath("/pos/menu");
@@ -374,7 +313,7 @@ export async function deleteMenuItem(formData: FormData) {
 }
 
 export async function saveModifierGroup(formData: FormData) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   const id = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const payload = {
@@ -401,7 +340,7 @@ export async function saveModifierGroup(formData: FormData) {
 }
 
 export async function deleteModifierGroup(formData: FormData) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   const id = String(formData.get("id") ?? "");
   await supabase
     .from("modifier_groups")
@@ -413,7 +352,7 @@ export async function deleteModifierGroup(formData: FormData) {
 }
 
 export async function saveModifier(formData: FormData) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   const id = String(formData.get("id") ?? "");
   const groupId = String(formData.get("group_id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
@@ -449,7 +388,7 @@ export async function saveModifier(formData: FormData) {
 export async function deleteModifier(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const groupId = String(formData.get("group_id") ?? "");
-  const { supabase } = await getAuthedMerchant();
+  const { supabase } = await getOwnerContext();
   await supabase.from("modifiers").delete().eq("id", id).eq("group_id", groupId);
   revalidatePath("/pos/menu");
   redirect("/pos/menu?tab=modifiers");

@@ -1,5 +1,5 @@
 import { MenuBuilderClient } from "@/app/pos/menu/menu-builder-client";
-import { getAuthedMerchant } from "@/lib/auth";
+import { getOwnerContext } from "@/lib/merchant-context";
 import type {
   Category,
   ItemModifierGroup,
@@ -15,7 +15,7 @@ export default async function PosMenuPage({
 }: {
   searchParams?: { tab?: string; error?: string };
 }) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
   const [
     { data: categories },
     { data: items },

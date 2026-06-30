@@ -2,20 +2,9 @@ import { createTag } from "@/app/dashboard/actions";
 import { RevenueChart } from "@/app/dashboard/revenue-chart";
 import { Input, Label } from "@/components/ui";
 import { formatCurrency, formatDateTime } from "@/lib/money";
-import { getAuthedMerchant } from "@/lib/auth";
+import { getOwnerContext } from "@/lib/merchant-context";
 import type { Receipt, Tag } from "@/lib/types";
-import {
-  ArrowUpRight,
-  CircleAlert,
-  Bell,
-  CalendarDays,
-  ChevronRight,
-  Plus,
-  ReceiptText,
-  RefreshCcw,
-  Search,
-  Wifi
-} from "lucide-react";
+import { CircleAlert, Plus, ReceiptText, Wifi } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +14,7 @@ export default async function DashboardPage({
 }: {
   searchParams?: { error?: string; tag_added?: string };
 }) {
-  const { supabase, merchant } = await getAuthedMerchant();
+  const { supabase, merchant } = await getOwnerContext();
 
   const [{ data: tags }, { data: receipts }, { data: latestReceipts }] =
     await Promise.all([
@@ -65,44 +54,12 @@ export default async function DashboardPage({
   const totalRevenue = allReceipts.reduce((sum, receipt) => sum + Number(receipt.total), 0);
   const avgTransaction = allReceipts.length ? totalRevenue / allReceipts.length : 0;
   const chartData = buildRevenueData(allReceipts);
-  const calendarDays = buildCalendarDays();
-  const weekReceipts = allReceipts.filter((receipt) => {
-    const created = new Date(receipt.created_at).getTime();
-    return Date.now() - created < 7 * 24 * 60 * 60 * 1000;
-  });
 
   return (
     <div className="animate-tapp-fade space-y-6">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div>
         <h1 className="text-[28px] font-bold tracking-tight text-ink">Dashboard</h1>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="hidden h-10 items-center gap-2 rounded-full bg-white px-4 shadow-soft lg:flex">
-            <Search className="h-4 w-4 text-muted" />
-            <span className="text-sm font-semibold text-muted">Search...</span>
-          </div>
-          <div className="flex rounded-full bg-white p-1 shadow-soft">
-            {["Day", "Week", "Month", "Year"].map((tab) => (
-              <button
-                key={tab}
-                className={`h-8 rounded-full px-4 text-sm font-semibold ${
-                  tab === "Month" ? "bg-ink text-white" : "text-ink hover:bg-[#F0F0F0]"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-          <div className="flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-ink shadow-soft">
-            <CalendarDays className="h-4 w-4" />
-            1 Jun 2026 - 29 Jun 2026
-          </div>
-          <button className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-ink shadow-soft">
-            <Bell className="h-4 w-4" />
-          </button>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ink text-sm font-bold text-white">
-            {initials(merchant.name)}
-          </div>
-        </div>
+        <p className="mt-1 text-sm text-muted">Overview for {merchant.name}</p>
       </div>
 
       {searchParams?.error ? (
@@ -136,100 +93,23 @@ export default async function DashboardPage({
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          dark
-          label="Total Revenue"
-          value={formatCurrency(totalRevenue)}
-          trend="↑ 4.2% from last month"
-          trendTone="up"
-        />
-        <StatCard
-          label="Receipts today"
-          value={String(receiptsToday.length)}
-          trend="↑ 1.7% from last month"
-          trendTone="up"
-        />
-        <StatCard
-          label="Avg transaction"
-          value={formatCurrency(avgTransaction)}
-          trend="↓ 2.9% from last month"
-          trendTone="down"
-        />
-        <StatCard
-          label="Active counters"
-          value={String(tags?.length ?? 0)}
-          trend="↑ 0.9% from last month"
-          trendTone="up"
-        />
+        <StatCard dark label="Total Revenue" value={formatCurrency(totalRevenue)} />
+        <StatCard label="Receipts today" value={String(receiptsToday.length)} />
+        <StatCard label="Avg transaction" value={formatCurrency(avgTransaction)} />
+        <StatCard label="Active counters" value={String(tags?.length ?? 0)} />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(340px,2fr)]">
-        <section className="rounded-[16px] bg-white p-6 shadow-soft">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-ink">Total Revenue</h2>
-            <button className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F0F0F0] text-ink">
-              <ArrowUpRight className="h-4 w-4" />
-            </button>
-          </div>
-          <RevenueChart data={chartData} />
-        </section>
-
-        <section className="rounded-[16px] bg-white p-6 shadow-soft">
-          <div className="flex items-center justify-between">
-            <button className="flex h-8 w-8 items-center justify-center rounded-full text-muted">
-              <ChevronRight className="h-4 w-4 rotate-180" />
-            </button>
-            <h2 className="text-base font-semibold text-ink">
-              {new Intl.DateTimeFormat("en-MT", {
-                month: "long",
-                year: "numeric",
-                timeZone: "Europe/Malta"
-              }).format(new Date())}
-            </h2>
-            <button className="flex h-8 w-8 items-center justify-center rounded-full text-muted">
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="mt-7 grid grid-cols-5 gap-3 text-center">
-            {calendarDays.map((day) => (
-              <div key={day.date} className="space-y-3">
-                <p className="text-sm font-medium text-muted">{day.weekday}</p>
-                <div
-                  className={`mx-auto flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold ${
-                    day.selected ? "bg-ink text-white shadow-lift" : "text-ink"
-                  }`}
-                >
-                  {day.date}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-8 rounded-[14px] border border-line p-4">
-            <p className="text-sm font-semibold text-muted">Receipts this week</p>
-            <div className="mt-2 flex items-center justify-between">
-              <div>
-                <p className="text-3xl font-bold text-ink">{weekReceipts.length}</p>
-                <p className="text-xs font-semibold text-green-600">↑ 0.9% from last month</p>
-              </div>
-              <div className="flex h-14 w-14 items-center justify-center rounded-full border-[6px] border-[#E7E7E7] border-r-ink text-sm font-bold">
-                65%
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
+      <section id="analytics" className="rounded-[16px] bg-white p-6 shadow-soft">
+        <h2 className="mb-4 text-base font-semibold text-ink">Total Revenue</h2>
+        <RevenueChart data={chartData} />
+      </section>
 
       <section className="overflow-hidden rounded-[16px] bg-white shadow-soft">
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
           <h2 className="text-base font-semibold text-ink">Recent Receipts</h2>
-          <div className="flex gap-2">
-            <button className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F0F0F0] text-ink">
-              <RefreshCcw className="h-4 w-4" />
-            </button>
-            <button className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F0F0F0] text-ink">
-              <ArrowUpRight className="h-4 w-4" />
-            </button>
-          </div>
+          <Link href="/dashboard/receipts" className="text-sm font-bold text-ink">
+            View all
+          </Link>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-left">
@@ -245,7 +125,7 @@ export default async function DashboardPage({
             </thead>
             <tbody>
               {allReceipts.slice(0, 10).map((receipt) => (
-                <tr key={receipt.id} className="h-[52px] border-b border-line transition hover:bg-[#FAFAFA]">
+                <tr key={receipt.id} className="h-[52px] border-b border-line">
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F0F0F0] text-ink">
@@ -354,14 +234,10 @@ export default async function DashboardPage({
 function StatCard({
   label,
   value,
-  trend,
-  trendTone,
   dark = false
 }: {
   label: string;
   value: string;
-  trend: string;
-  trendTone: "up" | "down";
   dark?: boolean;
 }) {
   return (
@@ -374,9 +250,6 @@ function StatCard({
         {label}
       </p>
       <p className="mt-4 text-[32px] font-bold leading-none">{value}</p>
-      <p className={`mt-3 text-xs font-semibold ${trendTone === "up" ? "text-green-600" : "text-red-600"}`}>
-        {trend}
-      </p>
     </section>
   );
 }
@@ -394,32 +267,7 @@ function buildRevenueData(receipts: Receipt[]) {
       .reduce((sum, receipt) => sum + Number(receipt.total), 0);
     return {
       month: new Intl.DateTimeFormat("en-MT", { month: "short" }).format(month),
-      revenue: revenue || [6200, 5100, 8500, 4300, 8200, 2600][index]
+      revenue
     };
   });
-}
-
-function buildCalendarDays() {
-  const now = new Date();
-  const current = now.getDate();
-  return [-2, -1, 0, 1, 2].map((offset) => {
-    const date = new Date(now);
-    date.setDate(current + offset);
-    return {
-      weekday: new Intl.DateTimeFormat("en-MT", { weekday: "short" }).format(date),
-      date: date.getDate(),
-      selected: offset === 0
-    };
-  });
-}
-
-function initials(name: string) {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join("") || "T"
-  );
 }
