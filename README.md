@@ -5,7 +5,7 @@ Full-stack NFC digital receipt SaaS built with Next.js 14 App Router, Supabase, 
 ## Setup
 
 1. Create a Supabase project.
-2. Run `supabase/schema.sql` in the Supabase SQL editor.
+2. Link the project and apply migrations (see [supabase/README.md](supabase/README.md)).
 3. Add Vercel/local environment variables:
 
 ```bash
@@ -33,13 +33,29 @@ pnpm install
 pnpm dev
 ```
 
+## Database schema
+
+Schema is managed with Supabase CLI migrations in `supabase/migrations/`.
+
+Whenever the database schema changes (new table, new column, new policy):
+
+1. Create a migration: `pnpm run db:new <description>`
+2. Write only the new SQL in that file
+3. Apply to production: `pnpm run db:migrate`
+
+Never manually paste SQL into the Supabase dashboard for schema changes, and never edit old migration files after they have been applied.
+
+See [supabase/README.md](supabase/README.md) for one-time CLI setup (`supabase login`, `supabase link`, baseline repair).
+
 ## Routes
 
 - `/t/[tag_code]` public mobile receipt viewer
 - `/login` merchant login
+- `/device` staff code login
 - `/dashboard` merchant home with NFC pucks and last 10 receipts
 - `/dashboard/receipt/new` receipt creation flow
 - `/dashboard/settings` business name and NFC URL settings
+- `/staff` staff POS (code login)
 
 ## Verification
 
