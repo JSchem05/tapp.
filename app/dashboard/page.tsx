@@ -17,39 +17,53 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
+type RevenueReceipt = Pick<Receipt, "created_at" | "total">;
+
 export default async function DashboardPage({
   searchParams
 }: {
   searchParams?: { error?: string; tag?: string; tag_added?: string };
 }) {
   const { supabase, merchant } = await getOwnerContext();
+  const chartStartDate = getRevenueChartStartDate();
 
-  const [{ data: tags }, { data: receipts }, { data: latestReceipts }, { data: staffMembers }] =
-    await Promise.all([
-      supabase
-        .from("tags")
-        .select("*")
-        .eq("merchant_id", merchant.id)
-        .order("created_at", { ascending: true })
-        .returns<Tag[]>(),
-      supabase
-        .from("receipts")
-        .select("*")
-        .eq("merchant_id", merchant.id)
-        .order("created_at", { ascending: false })
-        .limit(200)
-        .returns<Receipt[]>(),
-      supabase
-        .from("receipts")
-        .select("*")
-        .eq("merchant_id", merchant.id)
-        .eq("is_latest", true)
-        .returns<Receipt[]>(),
-      supabase
-        .from("staff")
-        .select("id, name")
-        .eq("merchant_id", merchant.id)
-    ]);
+  const [
+    { data: tags },
+    { data: receipts },
+    { data: revenueReceipts },
+    { data: latestReceipts },
+    { data: staffMembers }
+  ] = await Promise.all([
+    supabase
+      .from("tags")
+      .select("*")
+      .eq("merchant_id", merchant.id)
+      .order("created_at", { ascending: true })
+      .returns<Tag[]>(),
+    supabase
+      .from("receipts")
+      .select("*")
+      .eq("merchant_id", merchant.id)
+      .order("created_at", { ascending: false })
+      .limit(200)
+      .returns<Receipt[]>(),
+    supabase
+      .from("receipts")
+      .select("created_at,total")
+      .eq("merchant_id", merchant.id)
+      .gte("created_at", chartStartDate.toISOString())
+      .returns<RevenueReceipt[]>(),
+    supabase
+      .from("receipts")
+      .select("*")
+      .eq("merchant_id", merchant.id)
+      .eq("is_latest", true)
+      .returns<Receipt[]>(),
+    supabase
+      .from("staff")
+      .select("id, name")
+      .eq("merchant_id", merchant.id)
+  ]);
 
   const counters = tags ?? [];
   const allReceipts = receipts ?? [];
@@ -74,8 +88,9 @@ export default async function DashboardPage({
       allReceipts.find((receipt) => receipt.tag_id === selectedCounter.id) ??
       null
     : null;
-  const chartData = buildRevenueData(allReceipts);
-  const monthlyRevenue = revenueForMonth(allReceipts, 0);
+  const chartReceipts = revenueReceipts ?? [];
+  const chartData = buildRevenueData(chartReceipts);
+  const monthlyRevenue = revenueForMonth(chartReceipts, 0);
 
   return (
     <div className="animate-tapp-fade -mx-6 -my-8 lg:-mx-8">
@@ -206,7 +221,10 @@ export default async function DashboardPage({
         </div>
       </section>
 
-      <section className="mx-8 mb-8 overflow-hidden rounded-[16px] border border-line bg-white">
+      <section
+        id="recent-receipts"
+        className="mx-8 mb-8 overflow-hidden rounded-[16px] border border-line bg-white shadow-soft"
+      >
         <div className="flex items-center justify-between p-6">
           <h2 className="text-base font-semibold text-ink">Recent Receipts</h2>
           <Link href="/dashboard/receipts" className="text-sm font-bold text-ink">
@@ -465,33 +483,51 @@ function formatItemSummary(receipt: Receipt) {
   return remaining > 0 ? `${firstItem.name} + ${remaining} more` : firstItem.name;
 }
 
-function buildRevenueData(receipts: Receipt[]) {
+function buildRevenueData(receipts: RevenueReceipt[]) {
   const now = new Date();
-  return Array.from({ length: 6 }, (_, index) => {
+  const months = Array.from({ length: 6 }, (_, index) => {
     const month = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
-    const key = `${month.getFullYear()}-${month.getMonth()}`;
-    const revenue = receipts
-      .filter((receipt) => {
-        const created = new Date(receipt.created_at);
-        return `${created.getFullYear()}-${created.getMonth()}` === key;
-      })
-      .reduce((sum, receipt) => sum + Number(receipt.total), 0);
+    const key = getMonthKey(month);
+
     return {
+      key,
       month: new Intl.DateTimeFormat("en-MT", { month: "short" }).format(month),
-      revenue
+      revenue: 0
     };
   });
+  const revenueByMonth = new Map(months.map((month) => [month.key, month.revenue]));
+
+  receipts.forEach((receipt) => {
+    const key = getMonthKey(new Date(receipt.created_at));
+    if (!revenueByMonth.has(key)) return;
+
+    revenueByMonth.set(key, (revenueByMonth.get(key) ?? 0) + Number(receipt.total));
+  });
+
+  return months.map(({ key, month }) => ({
+    month,
+    revenue: revenueByMonth.get(key) ?? 0
+  }));
 }
 
-function revenueForMonth(receipts: Receipt[], monthOffset: number) {
+function revenueForMonth(receipts: RevenueReceipt[], monthOffset: number) {
   const now = new Date();
   const month = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
-  const key = `${month.getFullYear()}-${month.getMonth()}`;
+  const key = getMonthKey(month);
 
   return receipts
     .filter((receipt) => {
       const created = new Date(receipt.created_at);
-      return `${created.getFullYear()}-${created.getMonth()}` === key;
+      return getMonthKey(created) === key;
     })
     .reduce((sum, receipt) => sum + Number(receipt.total), 0);
+}
+
+function getMonthKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getRevenueChartStartDate() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() - 5, 1);
 }
