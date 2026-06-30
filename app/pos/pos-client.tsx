@@ -140,17 +140,16 @@ export function PosClient({
 
   function addSimpleItem(item: PosMenuItem) {
     if (!item.is_available) return;
-    setOrderItems((current) => [
-      ...current,
-      {
+    setOrderItems((current) =>
+      addOrMergeOrderItem(current, {
         item_id: item.id,
         name: item.name,
         qty: 1,
         price: Number(item.price),
         modifiers: [],
         comment: ""
-      }
-    ]);
+      })
+    );
   }
 
   function openOrderItem(orderItem: PosOrderItem, index: number) {
@@ -192,13 +191,13 @@ export function PosClient({
       qty: modal.qty,
       price: Number(modal.item.price),
       modifiers: selectedModifiers(modal),
-      comment: modal.comment
+      comment: modal.comment.trim()
     };
 
     setOrderItems((current) =>
       typeof modal.editIndex === "number"
-        ? current.map((item, index) => (index === modal.editIndex ? nextItem : item))
-        : [...current, nextItem]
+        ? addOrMergeOrderItem(current, nextItem, modal.editIndex)
+        : addOrMergeOrderItem(current, nextItem)
     );
     setError("");
     setModal(null);
@@ -592,6 +591,45 @@ function ItemImage({ item }: { item: PosMenuItem }) {
       {item.name[0]?.toUpperCase()}
     </div>
   );
+}
+
+function addOrMergeOrderItem(
+  current: PosOrderItem[],
+  nextItem: PosOrderItem,
+  replaceIndex?: number
+) {
+  const matchIndex = current.findIndex(
+    (item, index) => index !== replaceIndex && isSameOrderLine(item, nextItem)
+  );
+
+  if (matchIndex >= 0) {
+    return current
+      .map((item, index) =>
+        index === matchIndex ? { ...item, qty: item.qty + nextItem.qty } : item
+      )
+      .filter((_, index) => index !== replaceIndex);
+  }
+
+  if (typeof replaceIndex === "number") {
+    return current.map((item, index) => (index === replaceIndex ? nextItem : item));
+  }
+
+  return [...current, nextItem];
+}
+
+function isSameOrderLine(first: PosOrderItem, second: PosOrderItem) {
+  return (
+    first.item_id === second.item_id &&
+    first.comment.trim() === second.comment.trim() &&
+    modifierSignature(first.modifiers) === modifierSignature(second.modifiers)
+  );
+}
+
+function modifierSignature(modifiers: PosModifierSelection[]) {
+  return modifiers
+    .map((modifier) => `${modifier.group_id}:${modifier.modifier_id}`)
+    .sort()
+    .join("|");
 }
 
 function OrderThumb({ item, name }: { item?: PosMenuItem; name: string }) {
