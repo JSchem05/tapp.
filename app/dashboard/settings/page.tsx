@@ -3,6 +3,7 @@ import {
   connectSumUp,
   updateMerchantSettings
 } from "@/app/dashboard/actions";
+import { CopyButton } from "@/components/copy-button";
 import { LogoUploadField } from "@/components/logo-upload-field";
 import { StaffList } from "@/components/staff-list";
 import { Card, Input, Label } from "@/components/ui";
