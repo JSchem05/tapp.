@@ -50,6 +50,14 @@ export async function middleware(request: NextRequest) {
     }
   });
 
+  const hasSupabaseAuthCookie = request.cookies
+    .getAll()
+    .some(
+      (cookie) =>
+        cookie.name.includes("sb-") &&
+        (cookie.name.includes("auth-token") || cookie.name.includes("access-token"))
+    );
+
   const supabase = createServerClient(getSupabaseUrl(), getSupabaseKey(), {
     cookies: {
       getAll() {
@@ -71,16 +79,20 @@ export async function middleware(request: NextRequest) {
     }
   });
 
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  let user: unknown = null;
+  try {
+    const result = await supabase.auth.getUser();
+    user = result.data.user;
+  } catch {
+    user = null;
+  }
 
   const deviceSession =
     getDeviceSessionFromRequest(request) ??
     parseDeviceSession(request.cookies.get(DEVICE_COOKIE)?.value);
 
-  const isOwner = Boolean(user) || deviceSession?.role === "owner";
-  const isStaff = deviceSession?.role === "staff" && !user;
+  const isOwner = Boolean(user) || hasSupabaseAuthCookie || deviceSession?.role === "owner";
+  const isStaff = deviceSession?.role === "staff" && !user && !hasSupabaseAuthCookie;
 
   if (!isOwner && !isStaff) {
     if (isOwnerRoute(pathname) || isStaffRoute(pathname)) {
