@@ -22,6 +22,8 @@ pnpm exec supabase link --project-ref ciruniqznpokgkrkcqtm
 pnpm exec supabase migration repair --status applied 20260630120000
 ```
 
+Use the numeric prefix from `supabase/migrations/20260630120000_baseline_schema.sql` (not the full filename).
+
 ## Day-to-day workflow
 
 When the database schema changes (new table, column, policy, etc.):
