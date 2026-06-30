@@ -1,22 +1,18 @@
 "use server";
 
-import { clearDeviceSession } from "@/lib/device-session";
-import { generateDeviceCode } from "@/lib/device-codes";
+import { clearStaffDeviceSession } from "@/lib/device-session";
+import { generateStaffCode } from "@/lib/device-codes";
 import { getOwnerContext } from "@/lib/merchant-context";
 import { createClient } from "@/lib/supabase/server";
-import type { PosConnection, Staff } from "@/lib/types";
+import type { PosConnection } from "@/lib/types";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 export async function logout() {
   const supabase = createClient();
   await supabase.auth.signOut();
-  await clearDeviceSession();
-  redirect("/device");
-}
-
-export async function logoutDevice() {
-  return logout();
+  await clearStaffDeviceSession();
+  redirect("/login");
 }
 
 export async function updateMerchantSettings(formData: FormData) {
@@ -176,16 +172,17 @@ export async function setReceiptLive(formData: FormData) {
 export async function addStaffMember(formData: FormData) {
   const { supabase, merchant } = await getOwnerContext();
   const name = String(formData.get("name") ?? "").trim();
-  const pinCode = String(formData.get("pin_code") ?? "").trim();
 
-  if (!name || !/^\d{4}$/.test(pinCode)) {
-    redirect("/dashboard/settings?error=Staff%20name%20and%204-digit%20PIN%20are%20required");
+  if (!name) {
+    redirect("/dashboard/settings?error=Staff%20name%20is%20required");
   }
+
+  const code = await nextUniqueStaffPersonalCode(supabase);
 
   const { error } = await supabase.from("staff").insert({
     merchant_id: merchant.id,
     name,
-    pin_code: pinCode
+    code
   });
 
   if (error) {
@@ -288,74 +285,17 @@ export async function upsertSumUpConnection(input: {
   if (error) throw error;
 }
 
-export async function regenerateOwnerDeviceCode() {
-  const { supabase, merchant } = await getOwnerContext();
-  const code = await nextUniqueOwnerCode(supabase, merchant.id);
-  const { error } = await supabase
-    .from("merchants")
-    .update({ owner_code: code })
-    .eq("id", merchant.id);
-  if (error) {
-    redirect(`/dashboard/settings?error=${encodeURIComponent(error.message)}`);
-  }
-  revalidatePath("/dashboard/settings");
-  redirect("/dashboard/settings?saved=1");
-}
-
-export async function regenerateStaffDeviceCode() {
-  const { supabase, merchant } = await getOwnerContext();
-  const code = await nextUniqueStaffCode(supabase, merchant.id);
-  const { error } = await supabase
-    .from("merchants")
-    .update({ staff_code: code })
-    .eq("id", merchant.id);
-  if (error) {
-    redirect(`/dashboard/settings?error=${encodeURIComponent(error.message)}`);
-  }
-  revalidatePath("/dashboard/settings");
-  redirect("/dashboard/settings?saved=1");
-}
-
-async function nextUniqueOwnerCode(
-  supabase: Awaited<ReturnType<typeof getOwnerContext>>["supabase"],
-  merchantId: string
+async function nextUniqueStaffPersonalCode(
+  supabase: Awaited<ReturnType<typeof getOwnerContext>>["supabase"]
 ) {
   for (let attempt = 0; attempt < 12; attempt += 1) {
-    const code = generateDeviceCode();
+    const code = generateStaffCode();
     const { data } = await supabase
-      .from("merchants")
+      .from("staff")
       .select("id")
-      .eq("owner_code", code)
+      .eq("code", code)
       .maybeSingle<{ id: string }>();
-    if (!data || data.id === merchantId) return code;
-  }
-  throw new Error("Could not generate a unique owner code.");
-}
-
-async function nextUniqueStaffCode(
-  supabase: Awaited<ReturnType<typeof getOwnerContext>>["supabase"],
-  merchantId: string
-) {
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    const code = generateDeviceCode();
-    const { data } = await supabase
-      .from("merchants")
-      .select("id")
-      .eq("staff_code", code)
-      .maybeSingle<{ id: string }>();
-    if (!data || data.id === merchantId) return code;
+    if (!data) return code;
   }
   throw new Error("Could not generate a unique staff code.");
-}
-
-export async function getMerchantStaffByPin(pinCode: string) {
-  const { supabase, merchant } = await getOwnerContext();
-  if (!/^\d{4}$/.test(pinCode)) return null;
-  const { data } = await supabase
-    .from("staff")
-    .select("*")
-    .eq("merchant_id", merchant.id)
-    .eq("pin_code", pinCode)
-    .maybeSingle<Staff>();
-  return data;
 }

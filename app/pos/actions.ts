@@ -1,8 +1,8 @@
 "use server";
 
-import { getMerchantContext, getOwnerContext } from "@/lib/merchant-context";
+import { getMerchantAccessContext } from "@/lib/merchant-context";
 import { calculateReceiptTotals, roundMoney } from "@/lib/money";
-import type { PosOrderItem, Staff } from "@/lib/types";
+import type { PosOrderItem } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -11,7 +11,6 @@ type CompleteOrderInput = {
   items: PosOrderItem[];
   paymentMethod: "card" | "cash";
   status?: "open" | "completed";
-  staffPinCode?: string | null;
 };
 
 function normalizeOrderItems(items: PosOrderItem[]) {
@@ -36,11 +35,20 @@ function totalsForOrder(items: PosOrderItem[]) {
   return calculateReceiptTotals(receiptItems);
 }
 
+function menuPath(staff: { id: string } | null, suffix = "") {
+  return `${staff ? "/staff/menu" : "/pos/menu"}${suffix}`;
+}
+
+function revalidateMenuPaths() {
+  revalidatePath("/pos/menu");
+  revalidatePath("/staff/menu");
+}
+
 export async function completePosOrder(input: CompleteOrderInput) {
-  const { supabase, merchant } = await getMerchantContext();
+  const { supabase, merchant, staff } = await getMerchantAccessContext();
   const items = normalizeOrderItems(input.items);
   const status = input.status ?? "completed";
-  const pinCode = String(input.staffPinCode ?? "").trim();
+  const staffId = staff?.id ?? null;
 
   if (!input.tagId) {
     throw new Error("Select a counter before completing the order.");
@@ -62,22 +70,6 @@ export async function completePosOrder(input: CompleteOrderInput) {
   }
 
   const totals = totalsForOrder(items);
-  let staffId: string | null = null;
-  if (pinCode) {
-    if (!/^\d{4}$/.test(pinCode)) {
-      throw new Error("Staff PIN must be 4 digits.");
-    }
-    const { data: staff } = await supabase
-      .from("staff")
-      .select("*")
-      .eq("merchant_id", merchant.id)
-      .eq("pin_code", pinCode)
-      .maybeSingle<Staff>();
-    if (!staff) {
-      throw new Error("Staff PIN not found.");
-    }
-    staffId = staff.id;
-  }
 
   const { error: orderError } = await supabase.from("orders").insert({
     merchant_id: merchant.id,
@@ -152,10 +144,10 @@ export async function completePosOrder(input: CompleteOrderInput) {
 }
 
 export async function createCategory(formData: FormData) {
-  const { supabase, merchant } = await getOwnerContext();
+  const { supabase, merchant, staff } = await getMerchantAccessContext();
   const name = String(formData.get("name") ?? "").trim();
 
-  if (!name) redirect("/pos/menu?error=Category%20name%20is%20required");
+  if (!name) redirect(menuPath(staff, "?error=Category%20name%20is%20required"));
 
   const { count } = await supabase
     .from("categories")
@@ -168,17 +160,17 @@ export async function createCategory(formData: FormData) {
     sort_order: count ?? 0
   });
 
-  if (error) redirect(`/pos/menu?error=${encodeURIComponent(error.message)}`);
-  revalidatePath("/pos/menu");
-  redirect("/pos/menu?tab=categories");
+  if (error) redirect(menuPath(staff, `?error=${encodeURIComponent(error.message)}`));
+  revalidateMenuPaths();
+  redirect(menuPath(staff, "?tab=categories"));
 }
 
 export async function updateCategory(formData: FormData) {
-  const { supabase, merchant } = await getOwnerContext();
+  const { supabase, merchant, staff } = await getMerchantAccessContext();
   const id = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
 
-  if (!id || !name) redirect("/pos/menu?tab=categories&error=Missing%20category");
+  if (!id || !name) redirect(menuPath(staff, "?tab=categories&error=Missing%20category"));
 
   await supabase
     .from("categories")
@@ -186,20 +178,20 @@ export async function updateCategory(formData: FormData) {
     .eq("id", id)
     .eq("merchant_id", merchant.id);
 
-  revalidatePath("/pos/menu");
-  redirect("/pos/menu?tab=categories");
+  revalidateMenuPaths();
+  redirect(menuPath(staff, "?tab=categories"));
 }
 
 export async function deleteCategory(formData: FormData) {
-  const { supabase, merchant } = await getOwnerContext();
+  const { supabase, merchant, staff } = await getMerchantAccessContext();
   const id = String(formData.get("id") ?? "");
   await supabase.from("categories").delete().eq("id", id).eq("merchant_id", merchant.id);
-  revalidatePath("/pos/menu");
-  redirect("/pos/menu?tab=categories");
+  revalidateMenuPaths();
+  redirect(menuPath(staff, "?tab=categories"));
 }
 
 export async function updateCategoryOrder(ids: string[]) {
-  const { supabase, merchant } = await getOwnerContext();
+  const { supabase, merchant } = await getMerchantAccessContext();
   await Promise.all(
     ids.map((id, index) =>
       supabase
@@ -209,11 +201,11 @@ export async function updateCategoryOrder(ids: string[]) {
         .eq("merchant_id", merchant.id)
     )
   );
-  revalidatePath("/pos/menu");
+  revalidateMenuPaths();
 }
 
 export async function saveMenuItem(formData: FormData) {
-  const { supabase, merchant } = await getOwnerContext();
+  const { supabase, merchant, staff } = await getMerchantAccessContext();
   const id = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const categoryId = String(formData.get("category_id") ?? "");
@@ -223,13 +215,13 @@ export async function saveMenuItem(formData: FormData) {
   const image = formData.get("image");
 
   if (!name || !categoryId || price < 0) {
-    redirect("/pos/menu?tab=items&error=Add%20a%20name,%20category,%20and%20price");
+    redirect(menuPath(staff, "?tab=items&error=Add%20a%20name,%20category,%20and%20price"));
   }
 
   let imageUrl = String(formData.get("existing_image_url") ?? "") || null;
   if (image instanceof File && image.size > 0) {
     if (!image.type.startsWith("image/")) {
-      redirect("/pos/menu?tab=items&error=Image%20must%20be%20an%20image");
+      redirect(menuPath(staff, "?tab=items&error=Image%20must%20be%20an%20image"));
     }
     const extension = image.name.split(".").pop()?.toLowerCase() ?? "png";
     const imagePath = `${merchant.id}/item-${Date.now()}.${extension}`;
@@ -239,7 +231,9 @@ export async function saveMenuItem(formData: FormData) {
         contentType: image.type,
         upsert: true
       });
-    if (uploadError) redirect(`/pos/menu?tab=items&error=${encodeURIComponent(uploadError.message)}`);
+    if (uploadError) {
+      redirect(menuPath(staff, `?tab=items&error=${encodeURIComponent(uploadError.message)}`));
+    }
     imageUrl = supabase.storage.from("menu-images").getPublicUrl(imagePath).data.publicUrl;
   }
 
@@ -260,7 +254,7 @@ export async function saveMenuItem(formData: FormData) {
       .update(payload)
       .eq("id", id)
       .eq("merchant_id", merchant.id);
-    if (error) redirect(`/pos/menu?tab=items&error=${encodeURIComponent(error.message)}`);
+    if (error) redirect(menuPath(staff, `?tab=items&error=${encodeURIComponent(error.message)}`));
   } else {
     const { count } = await supabase
       .from("menu_items")
@@ -272,7 +266,14 @@ export async function saveMenuItem(formData: FormData) {
       .insert({ ...payload, sort_order: count ?? 0 })
       .select("id")
       .single<{ id: string }>();
-    if (error || !data) redirect(`/pos/menu?tab=items&error=${encodeURIComponent(error?.message ?? "Item could not be saved")}`);
+    if (error || !data) {
+      redirect(
+        menuPath(
+          staff,
+          `?tab=items&error=${encodeURIComponent(error?.message ?? "Item could not be saved")}`
+        )
+      );
+    }
     itemId = data.id;
   }
 
@@ -287,12 +288,13 @@ export async function saveMenuItem(formData: FormData) {
   }
 
   revalidatePath("/pos");
-  revalidatePath("/pos/menu");
-  redirect("/pos/menu?tab=items");
+  revalidatePath("/staff");
+  revalidateMenuPaths();
+  redirect(menuPath(staff, "?tab=items"));
 }
 
 export async function toggleMenuItemAvailability(formData: FormData) {
-  const { supabase, merchant } = await getOwnerContext();
+  const { supabase, merchant, staff } = await getMerchantAccessContext();
   const id = String(formData.get("id") ?? "");
   const isAvailable = String(formData.get("is_available")) === "true";
   await supabase
@@ -300,20 +302,20 @@ export async function toggleMenuItemAvailability(formData: FormData) {
     .update({ is_available: !isAvailable })
     .eq("id", id)
     .eq("merchant_id", merchant.id);
-  revalidatePath("/pos/menu");
-  redirect("/pos/menu?tab=items");
+  revalidateMenuPaths();
+  redirect(menuPath(staff, "?tab=items"));
 }
 
 export async function deleteMenuItem(formData: FormData) {
-  const { supabase, merchant } = await getOwnerContext();
+  const { supabase, merchant, staff } = await getMerchantAccessContext();
   const id = String(formData.get("id") ?? "");
   await supabase.from("menu_items").delete().eq("id", id).eq("merchant_id", merchant.id);
-  revalidatePath("/pos/menu");
-  redirect("/pos/menu?tab=items");
+  revalidateMenuPaths();
+  redirect(menuPath(staff, "?tab=items"));
 }
 
 export async function saveModifierGroup(formData: FormData) {
-  const { supabase, merchant } = await getOwnerContext();
+  const { supabase, merchant, staff } = await getMerchantAccessContext();
   const id = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const payload = {
@@ -323,7 +325,7 @@ export async function saveModifierGroup(formData: FormData) {
     multi_select: formData.get("multi_select") === "on"
   };
 
-  if (!name) redirect("/pos/menu?tab=modifiers&error=Group%20name%20required");
+  if (!name) redirect(menuPath(staff, "?tab=modifiers&error=Group%20name%20required"));
 
   if (id) {
     await supabase
@@ -335,24 +337,24 @@ export async function saveModifierGroup(formData: FormData) {
     await supabase.from("modifier_groups").insert(payload);
   }
 
-  revalidatePath("/pos/menu");
-  redirect("/pos/menu?tab=modifiers");
+  revalidateMenuPaths();
+  redirect(menuPath(staff, "?tab=modifiers"));
 }
 
 export async function deleteModifierGroup(formData: FormData) {
-  const { supabase, merchant } = await getOwnerContext();
+  const { supabase, merchant, staff } = await getMerchantAccessContext();
   const id = String(formData.get("id") ?? "");
   await supabase
     .from("modifier_groups")
     .delete()
     .eq("id", id)
     .eq("merchant_id", merchant.id);
-  revalidatePath("/pos/menu");
-  redirect("/pos/menu?tab=modifiers");
+  revalidateMenuPaths();
+  redirect(menuPath(staff, "?tab=modifiers"));
 }
 
 export async function saveModifier(formData: FormData) {
-  const { supabase, merchant } = await getOwnerContext();
+  const { supabase, merchant, staff } = await getMerchantAccessContext();
   const id = String(formData.get("id") ?? "");
   const groupId = String(formData.get("group_id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
@@ -365,7 +367,7 @@ export async function saveModifier(formData: FormData) {
     .eq("merchant_id", merchant.id)
     .single<{ id: string }>();
 
-  if (!group || !name) redirect("/pos/menu?tab=modifiers&error=Modifier%20is%20invalid");
+  if (!group || !name) redirect(menuPath(staff, "?tab=modifiers&error=Modifier%20is%20invalid"));
 
   if (id) {
     await supabase
@@ -381,15 +383,15 @@ export async function saveModifier(formData: FormData) {
     });
   }
 
-  revalidatePath("/pos/menu");
-  redirect("/pos/menu?tab=modifiers");
+  revalidateMenuPaths();
+  redirect(menuPath(staff, "?tab=modifiers"));
 }
 
 export async function deleteModifier(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const groupId = String(formData.get("group_id") ?? "");
-  const { supabase } = await getOwnerContext();
+  const { supabase, staff } = await getMerchantAccessContext();
   await supabase.from("modifiers").delete().eq("id", id).eq("group_id", groupId);
-  revalidatePath("/pos/menu");
-  redirect("/pos/menu?tab=modifiers");
+  revalidateMenuPaths();
+  redirect(menuPath(staff, "?tab=modifiers"));
 }

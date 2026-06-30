@@ -1,11 +1,11 @@
 "use server";
 
-import { getMerchantContext } from "@/lib/merchant-context";
+import { getStaffContext } from "@/lib/merchant-context";
 import type { Tag } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 
 export async function setReceiptLiveInstant(receiptId: string) {
-  const { supabase, merchant } = await getMerchantContext();
+  const { supabase, merchant } = await getStaffContext();
 
   const { data: receipt } = await supabase
     .from("receipts")

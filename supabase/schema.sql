@@ -33,9 +33,7 @@ alter table public.merchants
   add column if not exists show_loyalty boolean default false,
   add column if not exists show_email_opt_in boolean default true,
   add column if not exists show_social boolean default true,
-  add column if not exists show_info boolean default true,
-  add column if not exists owner_code text unique,
-  add column if not exists staff_code text unique;
+  add column if not exists show_info boolean default true;
 
 create table if not exists public.tags (
   id uuid primary key default gen_random_uuid(),
@@ -133,9 +131,8 @@ create table if not exists public.staff (
   id uuid primary key default gen_random_uuid(),
   merchant_id uuid not null references public.merchants(id) on delete cascade,
   name text not null,
-  pin_code char(4) not null,
-  created_at timestamptz not null default now(),
-  constraint staff_pin_digits check (pin_code ~ '^[0-9]{4}$')
+  code text not null unique,
+  created_at timestamptz not null default now()
 );
 
 create table if not exists public.pos_connections (
@@ -212,7 +209,7 @@ create index if not exists receipts_staff_id_idx on public.receipts(staff_id);
 create unique index if not exists customers_merchant_email_key on public.customers(merchant_id, lower(email));
 create unique index if not exists loyalty_cards_merchant_customer_key on public.loyalty_cards(merchant_id, customer_id);
 create index if not exists staff_merchant_created_at_idx on public.staff(merchant_id, created_at desc);
-create unique index if not exists staff_merchant_pin_code_key on public.staff(merchant_id, pin_code);
+create unique index if not exists staff_code_key on public.staff(code);
 create unique index if not exists pos_connections_merchant_provider_key on public.pos_connections(merchant_id, provider);
 
 alter table public.merchants enable row level security;
@@ -502,7 +499,7 @@ create policy "Merchants can delete menu images"
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
-create or replace function public.generate_device_code()
+create or replace function public.generate_staff_code()
 returns text
 language plpgsql
 as $$
@@ -518,34 +515,45 @@ begin
 end;
 $$;
 
+create or replace function public.set_staff_code()
+returns trigger
+language plpgsql
+as $$
+declare
+  next_code text;
+begin
+  if new.code is not null and new.code <> '' then
+    return new;
+  end if;
+
+  loop
+    next_code := public.generate_staff_code();
+    exit when not exists (select 1 from public.staff where code = next_code);
+  end loop;
+
+  new.code := next_code;
+  return new;
+end;
+$$;
+
+drop trigger if exists staff_set_code on public.staff;
+create trigger staff_set_code
+  before insert on public.staff
+  for each row execute procedure public.set_staff_code();
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer set search_path = public
 as $$
-declare
-  next_owner_code text;
-  next_staff_code text;
 begin
-  loop
-    next_owner_code := public.generate_device_code();
-    exit when not exists (select 1 from public.merchants where owner_code = next_owner_code);
-  end loop;
-
-  loop
-    next_staff_code := public.generate_device_code();
-    exit when not exists (select 1 from public.merchants where staff_code = next_staff_code);
-  end loop;
-
-  insert into public.merchants (id, name, email, slug, owner_code, staff_code)
+  insert into public.merchants (id, name, email, slug)
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'business_name', split_part(new.email, '@', 1)),
     new.email,
     trim(both '-' from lower(regexp_replace(coalesce(new.raw_user_meta_data->>'business_name', split_part(new.email, '@', 1)), '[^a-zA-Z0-9]+', '-', 'g')))
-      || '-' || substr(new.id::text, 1, 8),
-    next_owner_code,
-    next_staff_code
+      || '-' || substr(new.id::text, 1, 8)
   )
   on conflict (id) do nothing;
   return new;
@@ -557,31 +565,38 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- Backfill device codes for existing merchants.
+-- Migration: replace owner/staff device codes and PINs with per-staff personal codes.
+alter table public.merchants
+  drop column if exists owner_code,
+  drop column if exists staff_code;
+
+alter table public.staff
+  add column if not exists code text;
+
+alter table public.staff
+  drop column if exists pin_code;
+
+drop index if exists staff_merchant_pin_code_key;
+create unique index if not exists staff_code_key on public.staff(code);
+
 do $$
 declare
-  merchant_row record;
-  next_owner_code text;
-  next_staff_code text;
+  staff_row record;
+  next_code text;
 begin
-  for merchant_row in
-    select id from public.merchants where owner_code is null or staff_code is null
+  for staff_row in
+    select id from public.staff where code is null or code = ''
   loop
-    if (select owner_code from public.merchants where id = merchant_row.id) is null then
-      loop
-        next_owner_code := public.generate_device_code();
-        exit when not exists (select 1 from public.merchants where owner_code = next_owner_code);
-      end loop;
-      update public.merchants set owner_code = next_owner_code where id = merchant_row.id;
-    end if;
-
-    if (select staff_code from public.merchants where id = merchant_row.id) is null then
-      loop
-        next_staff_code := public.generate_device_code();
-        exit when not exists (select 1 from public.merchants where staff_code = next_staff_code);
-      end loop;
-      update public.merchants set staff_code = next_staff_code where id = merchant_row.id;
-    end if;
+    loop
+      next_code := public.generate_staff_code();
+      exit when not exists (select 1 from public.staff where code = next_code);
+    end loop;
+    update public.staff set code = next_code where id = staff_row.id;
   end loop;
 end
 $$;
+
+alter table public.staff
+  alter column code set not null;
+
+drop function if exists public.generate_device_code();

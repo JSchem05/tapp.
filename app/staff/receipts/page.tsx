@@ -1,6 +1,6 @@
 import { StaffReceiptsList } from "@/app/staff/receipts/staff-receipts-list";
 import { getStaffContext } from "@/lib/merchant-context";
-import type { Receipt, Tag } from "@/lib/types";
+import type { Receipt, Staff, Tag } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +8,7 @@ export default async function StaffReceiptsPage() {
   const { supabase, merchant } = await getStaffContext();
   const todayKey = new Date().toISOString().slice(0, 10);
 
-  const [{ data: receipts }, { data: tags }] = await Promise.all([
+  const [{ data: receipts }, { data: tags }, { data: staffMembers }] = await Promise.all([
     supabase
       .from("receipts")
       .select("*")
@@ -20,10 +20,21 @@ export default async function StaffReceiptsPage() {
       .from("tags")
       .select("*")
       .eq("merchant_id", merchant.id)
-      .returns<Tag[]>()
+      .returns<Tag[]>(),
+    supabase
+      .from("staff")
+      .select("id, name")
+      .eq("merchant_id", merchant.id)
+      .returns<Pick<Staff, "id" | "name">[]>()
   ]);
 
+  const staffById = new Map((staffMembers ?? []).map((member) => [member.id, member.name]));
+
   return (
-    <StaffReceiptsList receipts={receipts ?? []} tags={tags ?? []} />
+    <StaffReceiptsList
+      receipts={receipts ?? []}
+      tags={tags ?? []}
+      staffById={staffById}
+    />
   );
 }

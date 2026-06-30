@@ -2,7 +2,7 @@
 
 import { getOwnerContext } from "@/lib/merchant-context";
 import { VAT_RATE, calculateReceiptTotals, roundMoney } from "@/lib/money";
-import type { PaymentMethod, Receipt, ReceiptItem, Staff, Tag } from "@/lib/types";
+import type { PaymentMethod, Receipt, ReceiptItem, Tag } from "@/lib/types";
 import { redirect } from "next/navigation";
 
 const PAYMENT_METHODS = new Set(["Card", "Cash", "Other"]);
@@ -14,7 +14,6 @@ export async function createReceipt(formData: FormData) {
   const rawItems = String(formData.get("items") ?? "[]");
   const awaitingReceiptId = String(formData.get("awaiting_receipt_id") ?? "");
   const lockedTotal = Number(formData.get("locked_total") ?? NaN);
-  const staffPinCode = String(formData.get("staff_pin_code") ?? "").trim();
 
   if (!tagId) {
     redirect("/dashboard/receipt/new?error=Select%20an%20NFC%20puck");
@@ -55,22 +54,7 @@ export async function createReceipt(formData: FormData) {
   }
 
   const totals = calculateReceiptTotals(items);
-  let staffId: string | null = null;
-  if (staffPinCode) {
-    if (!/^\d{4}$/.test(staffPinCode)) {
-      redirect("/dashboard/receipt/new?error=Staff%20PIN%20must%20be%204%20digits");
-    }
-    const { data: staff } = await supabase
-      .from("staff")
-      .select("*")
-      .eq("merchant_id", merchant.id)
-      .eq("pin_code", staffPinCode)
-      .maybeSingle<Staff>();
-    if (!staff) {
-      redirect("/dashboard/receipt/new?error=Staff%20PIN%20was%20not%20recognized");
-    }
-    staffId = staff.id;
-  }
+  const staffId: string | null = null;
 
   const { error: updateError } = await supabase
     .from("receipts")

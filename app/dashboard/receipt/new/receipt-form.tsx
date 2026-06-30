@@ -32,7 +32,6 @@ export function ReceiptForm({
     { key: crypto.randomUUID(), name: "", qty: 1, price: 0 }
   ]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Card");
-  const [staffPinCode, setStaffPinCode] = useState("");
   const isAwaitingFlow = Boolean(awaitingReceipt);
 
   const totals = useMemo(() => calculateReceiptTotals(items), [items]);
@@ -86,7 +85,6 @@ export function ReceiptForm({
       <input type="hidden" name="payment_method" value={paymentMethod} />
       <input type="hidden" name="awaiting_receipt_id" value={awaitingReceipt?.id ?? ""} />
       <input type="hidden" name="locked_total" value={String(awaitingReceipt?.total ?? "")} />
-      <input type="hidden" name="staff_pin_code" value={staffPinCode} />
 
       <Card className="space-y-6 p-6">
         <div>
@@ -243,18 +241,6 @@ export function ReceiptForm({
               </button>
             ))}
           </div>
-        </div>
-        <div className="space-y-2">
-          <Label>Who&apos;s ringing this up? (optional PIN)</Label>
-          <Input
-            value={staffPinCode}
-            onChange={(event) =>
-              setStaffPinCode(event.target.value.replace(/\D/g, "").slice(0, 4))
-            }
-            placeholder="4-digit PIN"
-            inputMode="numeric"
-            maxLength={4}
-          />
         </div>
 
         <div className="rounded-[16px] border border-line bg-white p-4">

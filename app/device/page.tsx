@@ -1,4 +1,4 @@
-import { loginWithDeviceCode } from "@/app/device/actions";
+import { loginWithStaffCode } from "@/app/device/actions";
 import { Card, Input, Label } from "@/components/ui";
 import Link from "next/link";
 
@@ -16,14 +16,14 @@ export default function DeviceLoginPage({
           </div>
           <h1 className="text-4xl font-bold tracking-tight text-ink">Tapp.</h1>
           <p className="mt-2 text-sm text-muted">
-            Enter your business code once on this device.
+            Staff device login — enter your personal code.
           </p>
         </div>
 
         <Card>
-          <form action={loginWithDeviceCode} className="space-y-5">
+          <form action={loginWithStaffCode} className="space-y-5">
             <div className="space-y-2">
-              <Label>Enter your business code</Label>
+              <Label>Enter your code</Label>
               <Input
                 name="code"
                 autoComplete="off"
@@ -47,9 +47,9 @@ export default function DeviceLoginPage({
         </Card>
 
         <p className="mt-6 text-center text-sm text-muted">
-          Owner with email?{" "}
+          Owner?{" "}
           <Link href="/login" className="font-semibold text-ink underline">
-            Log in here
+            Log in with email
           </Link>
         </p>
       </div>

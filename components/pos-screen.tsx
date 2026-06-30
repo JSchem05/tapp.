@@ -13,7 +13,7 @@ export function PosScreen({
   data: PosData;
   mode: "owner" | "staff";
 }) {
-  const { categories, items, tags, staff } = data;
+  const { categories, items, tags } = data;
 
   if (!categories.length || !items.length) {
     return (
@@ -28,20 +28,31 @@ export function PosScreen({
           <p className="mt-3 text-sm leading-6 text-muted">
             {mode === "owner"
               ? "Add categories and items in Menu Builder before taking POS orders."
-              : "Ask the owner to set up the menu before taking orders."}
+              : "Add categories and items in Menu before taking orders."}
           </p>
-          {mode === "owner" ? (
-            <div className="mt-6">
-              <Link
-                href="/pos/menu"
-                className="inline-flex h-12 items-center justify-center rounded-[12px] bg-ink px-4 text-sm font-extrabold text-white"
-              >
-                Go to Menu Builder
-              </Link>
-            </div>
-          ) : null}
+          <div className="mt-6">
+            <Link
+              href={mode === "owner" ? "/pos/menu" : "/staff/menu"}
+              className="inline-flex h-12 items-center justify-center rounded-[12px] bg-ink px-4 text-sm font-extrabold text-white"
+            >
+              Go to Menu
+            </Link>
+          </div>
         </div>
       </main>
+    );
+  }
+
+  if (mode === "staff") {
+    return (
+      <PosClient
+        merchantName={merchantName}
+        categories={categories}
+        items={items}
+        tags={tags}
+        baseUrl={getBaseUrl()}
+        embedded
+      />
     );
   }
 
@@ -50,15 +61,13 @@ export function PosScreen({
       <div className="grid h-full grid-rows-[56px_1fr]">
         <header className="flex h-14 items-center justify-between border-b border-line bg-white px-5">
           <div className="flex items-center gap-3">
-            {mode === "owner" ? (
-              <Link
-                href="/dashboard"
-                className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink hover:bg-[#FAFAFA]"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Dashboard
-              </Link>
-            ) : null}
+            <Link
+              href="/dashboard"
+              className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink hover:bg-[#FAFAFA]"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Dashboard
+            </Link>
             <div>
               <p className="text-lg font-extrabold text-ink">{merchantName}</p>
               <p className="text-xs text-muted">POS</p>
@@ -71,19 +80,15 @@ export function PosScreen({
               timeZone: "Europe/Malta"
             }).format(new Date())}
           </div>
-          {mode === "owner" ? (
-            <div className="flex items-center gap-3">
-              <Link
-                href="/pos/menu"
-                className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink hover:bg-[#FAFAFA]"
-              >
-                <ReceiptText className="h-4 w-4" />
-                Menu Builder
-              </Link>
-            </div>
-          ) : (
-            <div />
-          )}
+          <div className="flex items-center gap-3">
+            <Link
+              href="/pos/menu"
+              className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink hover:bg-[#FAFAFA]"
+            >
+              <ReceiptText className="h-4 w-4" />
+              Menu Builder
+            </Link>
+          </div>
         </header>
 
         <PosClient
@@ -91,7 +96,6 @@ export function PosScreen({
           categories={categories}
           items={items}
           tags={tags}
-          staff={staff}
           baseUrl={getBaseUrl()}
         />
       </div>

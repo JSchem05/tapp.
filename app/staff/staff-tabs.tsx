@@ -1,11 +1,12 @@
 "use client";
 
-import { Grid3X3, ReceiptText } from "lucide-react";
+import { Grid3X3, MenuSquare, ReceiptText } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const tabs = [
   { href: "/staff", label: "POS", icon: Grid3X3, exact: true },
+  { href: "/staff/menu", label: "Menu", icon: MenuSquare },
   { href: "/staff/receipts", label: "Receipts", icon: ReceiptText }
 ];
 

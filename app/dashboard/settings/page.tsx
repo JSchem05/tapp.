@@ -2,8 +2,6 @@ import {
   addStaffMember,
   connectSumUp,
   deleteStaffMember,
-  regenerateOwnerDeviceCode,
-  regenerateStaffDeviceCode,
   updateMerchantSettings
 } from "@/app/dashboard/actions";
 import { CopyButton } from "@/components/copy-button";
@@ -202,21 +200,42 @@ export default async function SettingsPage({
 
       <Card className="p-6">
         <SectionHeader
-          icon={<Cable className="h-5 w-5" />}
-          title="Device codes"
-          description="Share these once per device. Regenerating invalidates the old code immediately."
+          icon={<Store className="h-5 w-5" />}
+          title="Staff"
+          description="Each staff member gets a personal code to sign in on a shared device."
         />
-        <div className="mt-5 space-y-4">
-          <DeviceCodeRow
-            label="Owner code"
-            code={merchant.owner_code}
-            regenerateAction={regenerateOwnerDeviceCode}
-          />
-          <DeviceCodeRow
-            label="Staff code"
-            code={merchant.staff_code}
-            regenerateAction={regenerateStaffDeviceCode}
-          />
+        <form action={addStaffMember} className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
+          <Input name="name" placeholder="Staff name" required />
+          <button className="h-11 rounded-[10px] bg-ink px-4 text-sm font-semibold text-white shadow-soft">
+            Add staff
+          </button>
+        </form>
+        <div className="mt-4 space-y-2">
+          {(staff ?? []).map((member) => (
+            <div
+              key={member.id}
+              className="flex items-center justify-between rounded-[12px] border border-line bg-white px-3 py-2"
+            >
+              <div>
+                <p className="text-sm font-semibold text-ink">{member.name}</p>
+                <p className="mt-0.5 font-mono text-xs font-bold tracking-[0.2em] text-muted">
+                  {member.code}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <CopyButton value={member.code} />
+                <form action={deleteStaffMember}>
+                  <input type="hidden" name="staff_id" value={member.id} />
+                  <button className="rounded-[8px] border border-line px-3 py-1.5 text-xs font-semibold text-ink hover:bg-[#FAFAFA]">
+                    Remove
+                  </button>
+                </form>
+              </div>
+            </div>
+          ))}
+          {(staff ?? []).length === 0 ? (
+            <p className="text-sm text-muted">No staff added yet.</p>
+          ) : null}
         </div>
       </Card>
 
@@ -247,53 +266,6 @@ export default async function SettingsPage({
               </div>
             );
           })}
-        </div>
-      </Card>
-
-      <Card className="p-6">
-        <SectionHeader
-          icon={<Store className="h-5 w-5" />}
-          title="Staff PINs"
-          description="Optional cashier PINs used to tag each order and receipt."
-        />
-        <form action={addStaffMember} className="mt-5 grid gap-3 sm:grid-cols-[1fr_160px_auto]">
-          <Input name="name" placeholder="Staff name" required />
-          <Input
-            name="pin_code"
-            placeholder="4-digit PIN"
-            minLength={4}
-            maxLength={4}
-            pattern="\d{4}"
-            inputMode="numeric"
-            required
-          />
-          <button className="h-11 rounded-[10px] bg-ink px-4 text-sm font-semibold text-white shadow-soft">
-            Add staff
-          </button>
-        </form>
-        <div className="mt-4 space-y-2">
-          {(staff ?? []).map((member) => (
-            <div
-              key={member.id}
-              className="flex items-center justify-between rounded-[12px] border border-line bg-white px-3 py-2"
-            >
-              <div>
-                <p className="text-sm font-semibold text-ink">{member.name}</p>
-                <p className="text-xs text-muted">PIN {member.pin_code}</p>
-              </div>
-              <form action={deleteStaffMember}>
-                <input type="hidden" name="staff_id" value={member.id} />
-                <button className="rounded-[8px] border border-line px-3 py-1.5 text-xs font-semibold text-ink hover:bg-[#FAFAFA]">
-                  Remove
-                </button>
-              </form>
-            </div>
-          ))}
-          {(staff ?? []).length === 0 ? (
-            <p className="text-sm text-muted">
-              No staff added yet. PIN tagging stays optional for each order.
-            </p>
-          ) : null}
         </div>
       </Card>
 
@@ -420,35 +392,6 @@ function ToggleField({
         <span className="absolute left-1 h-5 w-5 rounded-full bg-muted/50 transition peer-checked:translate-x-5 peer-checked:bg-white" />
       </span>
     </label>
-  );
-}
-
-function DeviceCodeRow({
-  label,
-  code,
-  regenerateAction
-}: {
-  label: string;
-  code: string | null;
-  regenerateAction: () => Promise<void>;
-}) {
-  return (
-    <div className="flex flex-col gap-3 rounded-[14px] border border-line bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="text-sm font-semibold text-ink">{label}</p>
-        <p className="mt-1 font-mono text-lg font-bold tracking-[0.2em] text-ink">
-          {code ?? "Not set"}
-        </p>
-      </div>
-      <div className="flex items-center gap-2">
-        {code ? <CopyButton value={code} /> : null}
-        <form action={regenerateAction}>
-          <button className="h-10 rounded-[10px] border border-line bg-white px-4 text-sm font-semibold text-ink hover:bg-[#FAFAFA]">
-            Regenerate
-          </button>
-        </form>
-      </div>
-    </div>
   );
 }
 

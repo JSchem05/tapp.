@@ -58,7 +58,8 @@ export function MenuBuilderClient({
   modifiers,
   itemGroups,
   initialTab,
-  error
+  error,
+  backHref = "/pos"
 }: {
   merchantName: string;
   categories: Category[];
@@ -68,6 +69,7 @@ export function MenuBuilderClient({
   itemGroups: ItemModifierGroup[];
   initialTab?: string;
   error?: string;
+  backHref?: string;
 }) {
   const [tab, setTab] = useState<Tab>(
     initialTab === "items" || initialTab === "modifiers" ? initialTab : "categories"
@@ -79,7 +81,7 @@ export function MenuBuilderClient({
         <header className="mb-6 flex flex-col gap-4 rounded-[16px] border border-line bg-white p-4 shadow-soft md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <Link
-              href="/pos"
+              href={backHref}
               className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-line bg-white text-ink hover:bg-[#FAFAFA]"
             >
               <ArrowLeft className="h-5 w-5" />

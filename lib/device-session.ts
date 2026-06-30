@@ -1,31 +1,40 @@
 import { cookies } from "next/headers";
 import type { NextRequest, NextResponse } from "next/server";
 
-export const DEVICE_COOKIE = "tapp_device";
-export type DeviceRole = "owner" | "staff";
+export const DEVICE_COOKIE = "tapp_staff_device";
 
-export type DeviceSession = {
+export type StaffDeviceSession = {
+  staffId: string;
+  staffName: string;
   merchantId: string;
-  role: DeviceRole;
 };
 
-export function encodeDeviceSession(session: DeviceSession) {
-  return `${session.role}:${session.merchantId}`;
+export function encodeStaffDeviceSession(session: StaffDeviceSession) {
+  return JSON.stringify(session);
 }
 
-export function parseDeviceSession(value: string | undefined | null): DeviceSession | null {
+export function parseStaffDeviceSession(
+  value: string | undefined | null
+): StaffDeviceSession | null {
   if (!value) return null;
-  const [role, merchantId] = value.split(":");
-  if ((role !== "owner" && role !== "staff") || !merchantId) return null;
-  return { merchantId, role };
+  try {
+    const parsed = JSON.parse(value) as StaffDeviceSession;
+    if (!parsed.staffId || !parsed.staffName || !parsed.merchantId) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
-export function getDeviceSessionFromRequest(request: NextRequest) {
-  return parseDeviceSession(request.cookies.get(DEVICE_COOKIE)?.value);
+export function getStaffDeviceSessionFromRequest(request: NextRequest) {
+  return parseStaffDeviceSession(request.cookies.get(DEVICE_COOKIE)?.value);
 }
 
-export function setDeviceSessionCookie(response: NextResponse, session: DeviceSession) {
-  response.cookies.set(DEVICE_COOKIE, encodeDeviceSession(session), {
+export function setStaffDeviceSessionCookie(
+  response: NextResponse,
+  session: StaffDeviceSession
+) {
+  response.cookies.set(DEVICE_COOKIE, encodeStaffDeviceSession(session), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -34,7 +43,7 @@ export function setDeviceSessionCookie(response: NextResponse, session: DeviceSe
   });
 }
 
-export function clearDeviceSessionCookie(response: NextResponse) {
+export function clearStaffDeviceSessionCookie(response: NextResponse) {
   response.cookies.set(DEVICE_COOKIE, "", {
     httpOnly: true,
     sameSite: "lax",
@@ -44,14 +53,14 @@ export function clearDeviceSessionCookie(response: NextResponse) {
   });
 }
 
-export async function getDeviceSessionFromCookies() {
+export async function getStaffDeviceSessionFromCookies() {
   const cookieStore = await cookies();
-  return parseDeviceSession(cookieStore.get(DEVICE_COOKIE)?.value);
+  return parseStaffDeviceSession(cookieStore.get(DEVICE_COOKIE)?.value);
 }
 
-export async function setDeviceSession(session: DeviceSession) {
+export async function setStaffDeviceSession(session: StaffDeviceSession) {
   const cookieStore = await cookies();
-  cookieStore.set(DEVICE_COOKIE, encodeDeviceSession(session), {
+  cookieStore.set(DEVICE_COOKIE, encodeStaffDeviceSession(session), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -60,7 +69,7 @@ export async function setDeviceSession(session: DeviceSession) {
   });
 }
 
-export async function clearDeviceSession() {
+export async function clearStaffDeviceSession() {
   const cookieStore = await cookies();
   cookieStore.set(DEVICE_COOKIE, "", {
     httpOnly: true,

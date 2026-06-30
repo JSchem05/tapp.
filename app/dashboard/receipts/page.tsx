@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function ReceiptsPage() {
   const { supabase, merchant } = await getOwnerContext();
 
-  const [{ data: receipts }, { data: tags }] = await Promise.all([
+  const [{ data: receipts }, { data: tags }, { data: staffMembers }] = await Promise.all([
     supabase
       .from("receipts")
       .select("*")
@@ -20,10 +20,15 @@ export default async function ReceiptsPage() {
       .from("tags")
       .select("*")
       .eq("merchant_id", merchant.id)
-      .returns<Tag[]>()
+      .returns<Tag[]>(),
+    supabase
+      .from("staff")
+      .select("id, name")
+      .eq("merchant_id", merchant.id)
   ]);
 
   const tagById = new Map((tags ?? []).map((tag) => [tag.id, tag]));
+  const staffById = new Map((staffMembers ?? []).map((member) => [member.id, member.name]));
 
   return (
     <div className="animate-tapp-fade space-y-6">
@@ -62,7 +67,10 @@ export default async function ReceiptsPage() {
                       </div>
                     </td>
                     <td className="px-5 py-3 text-sm text-muted">
-                      {formatDateTime(receipt.created_at)}
+                      <p>{formatDateTime(receipt.created_at)}</p>
+                      {receipt.staff_id && staffById.get(receipt.staff_id) ? (
+                        <p className="text-xs">Rung up by {staffById.get(receipt.staff_id)}</p>
+                      ) : null}
                     </td>
                     <td className="px-5 py-3 text-sm text-muted">
                       {receipt.awaiting_items

@@ -16,7 +16,7 @@ export default async function DashboardPage({
 }) {
   const { supabase, merchant } = await getOwnerContext();
 
-  const [{ data: tags }, { data: receipts }, { data: latestReceipts }] =
+  const [{ data: tags }, { data: receipts }, { data: latestReceipts }, { data: staffMembers }] =
     await Promise.all([
       supabase
         .from("tags")
@@ -36,7 +36,11 @@ export default async function DashboardPage({
         .select("*")
         .eq("merchant_id", merchant.id)
         .eq("is_latest", true)
-        .returns<Receipt[]>()
+        .returns<Receipt[]>(),
+      supabase
+        .from("staff")
+        .select("id, name")
+        .eq("merchant_id", merchant.id)
     ]);
 
   const allReceipts = receipts ?? [];
@@ -47,6 +51,7 @@ export default async function DashboardPage({
     (latestReceipts ?? []).map((receipt) => [receipt.tag_id, receipt])
   );
   const tagById = new Map((tags ?? []).map((tag) => [tag.id, tag]));
+  const staffById = new Map((staffMembers ?? []).map((member) => [member.id, member.name]));
   const todayKey = new Date().toISOString().slice(0, 10);
   const receiptsToday = allReceipts.filter((receipt) =>
     receipt.created_at.startsWith(todayKey)
@@ -136,6 +141,11 @@ export default async function DashboardPage({
                           {tagById.get(receipt.tag_id)?.label ?? "Counter"}
                         </p>
                         <p className="text-xs text-muted">{formatDateTime(receipt.created_at)}</p>
+                        {receipt.staff_id && staffById.get(receipt.staff_id) ? (
+                          <p className="text-xs text-muted">
+                            Rung up by {staffById.get(receipt.staff_id)}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   </td>

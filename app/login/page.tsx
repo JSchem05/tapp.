@@ -53,9 +53,9 @@ export default function LoginPage({
             <LoginButton />
           </form>
           <p className="mt-5 text-center text-sm text-muted">
-            Using a shared device?{" "}
+            Staff?{" "}
             <Link href="/device" className="font-semibold text-ink underline">
-              Enter business code
+              Enter your code
             </Link>
           </p>
         </Card>

@@ -9,7 +9,6 @@ import type {
   Category,
   PosModifierSelection,
   PosOrderItem,
-  Staff,
   Tag
 } from "@/lib/types";
 import {
@@ -42,15 +41,15 @@ export function PosClient({
   categories,
   items,
   tags,
-  staff,
-  baseUrl
+  baseUrl,
+  embedded = false
 }: {
   merchantName: string;
   categories: Category[];
   items: PosMenuItem[];
   tags: Tag[];
-  staff: Staff[];
   baseUrl: string;
+  embedded?: boolean;
 }) {
   const [activeCategory, setActiveCategory] = useState(categories[0]?.id ?? "");
   const [query, setQuery] = useState("");
@@ -65,7 +64,6 @@ export function PosClient({
   });
   const [successUrl, setSuccessUrl] = useState("");
   const [error, setError] = useState("");
-  const [staffPinCode, setStaffPinCode] = useState("");
   const [isPending, startTransition] = useTransition();
   const orderQtyByItem = useMemo(() => {
     const map = new Map<string, number>();
@@ -104,11 +102,6 @@ export function PosClient({
   }, [orderItems]);
 
   const selectedTag = tags.find((tag) => tag.id === selectedTagId);
-  const staffByPin = useMemo(
-    () => new Map(staff.map((member) => [member.pin_code, member])),
-    [staff]
-  );
-  const selectedStaff = staffByPin.get(staffPinCode);
   const change =
     payment.method === "cash" ? roundMoney(Number(payment.tendered || 0) - totals.total) : 0;
 
@@ -204,7 +197,6 @@ export function PosClient({
     setPaymentOpen(false);
     setSuccessUrl("");
     setError("");
-    setStaffPinCode("");
   }
 
   function submitOrder(status: "open" | "completed") {
@@ -215,8 +207,7 @@ export function PosClient({
           tagId: selectedTagId,
           items: orderItems,
           paymentMethod: payment.method,
-          status,
-          staffPinCode
+          status
         });
         if (result.status === "completed") {
           const url = selectedTag ? `${baseUrl}/t/${selectedTag.tag_code}` : baseUrl;
@@ -234,7 +225,11 @@ export function PosClient({
 
   return (
     <div className="grid min-h-0 grid-cols-1 lg:grid-cols-[65%_35%]">
-      <section className="flex h-[calc(100vh-56px)] min-h-0 flex-col overflow-y-auto bg-cream p-4">
+      <section
+        className={`flex min-h-0 flex-col overflow-y-auto bg-cream p-4 ${
+          embedded ? "min-h-[calc(100dvh-9rem)]" : "h-[calc(100vh-56px)]"
+        }`}
+      >
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-base font-bold text-ink">Menu</h1>
@@ -417,37 +412,6 @@ export function PosClient({
               ))}
             </select>
           </label>
-          <div className="mt-3 rounded-[12px] border border-line bg-[#FAFAFA] p-3">
-            <p className="text-sm font-semibold text-ink">Who&apos;s ringing this up?</p>
-            <p className="mt-0.5 text-xs text-muted">
-              Optional 4-digit PIN for staff tagging.
-            </p>
-            <div className="mt-2 flex items-center gap-2">
-              <input
-                value={staffPinCode}
-                onChange={(event) =>
-                  setStaffPinCode(event.target.value.replace(/\D/g, "").slice(0, 4))
-                }
-                placeholder="----"
-                inputMode="numeric"
-                className="h-10 w-24 rounded-[10px] border border-line bg-white px-3 text-sm font-bold tracking-[0.3em] text-ink outline-none focus:border-ink"
-              />
-              {staffPinCode ? (
-                <button
-                  type="button"
-                  onClick={() => setStaffPinCode("")}
-                  className="h-10 rounded-[10px] border border-line bg-white px-3 text-xs font-semibold text-ink"
-                >
-                  Clear
-                </button>
-              ) : null}
-            </div>
-            {staffPinCode.length > 0 ? (
-              <p className="mt-2 text-xs font-semibold text-muted">
-                {selectedStaff ? `Tagged: ${selectedStaff.name}` : "PIN not recognized yet"}
-              </p>
-            ) : null}
-          </div>
           {error ? <p className="mt-3 rounded-[10px] bg-red-50 px-3 py-2 text-sm font-bold text-red-700">{error}</p> : null}
           <div className="mt-4 grid grid-cols-[2fr_3fr] gap-2">
             <button

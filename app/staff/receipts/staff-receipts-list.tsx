@@ -7,10 +7,12 @@ import { useMemo, useState, useTransition } from "react";
 
 export function StaffReceiptsList({
   receipts,
-  tags
+  tags,
+  staffById
 }: {
   receipts: Receipt[];
   tags: Tag[];
+  staffById: Map<string, string>;
 }) {
   const [query, setQuery] = useState("");
   const [toast, setToast] = useState("");
@@ -77,6 +79,7 @@ export function StaffReceiptsList({
                 <th className="px-4 py-3 font-semibold">Counter</th>
                 <th className="px-4 py-3 font-semibold">Items</th>
                 <th className="px-4 py-3 font-semibold">Total</th>
+                <th className="px-4 py-3 font-semibold">Staff</th>
                 <th className="px-4 py-3 font-semibold"></th>
               </tr>
             </thead>
@@ -94,6 +97,11 @@ export function StaffReceiptsList({
                     </td>
                     <td className="px-4 py-3 font-bold text-ink">
                       {formatCurrency(receipt.total)}
+                    </td>
+                    <td className="px-4 py-3 text-muted">
+                      {receipt.staff_id && staffById.get(receipt.staff_id)
+                        ? staffById.get(receipt.staff_id)
+                        : "—"}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {!receipt.awaiting_items ? (

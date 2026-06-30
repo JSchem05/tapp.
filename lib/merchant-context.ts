@@ -1,38 +1,76 @@
-import { getDeviceSessionFromCookies, type DeviceRole } from "@/lib/device-session";
+import { getStaffDeviceSessionFromCookies } from "@/lib/device-session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import type { Merchant } from "@/lib/types";
+import type { Merchant, Staff } from "@/lib/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 
-export type MerchantContext = {
+export type OwnerContext = {
   merchant: Merchant;
-  role: DeviceRole;
   supabase: SupabaseClient;
-  authType: "supabase" | "device";
-  userId?: string;
+  userId: string;
 };
 
-type MerchantContextOptions = {
-  requireOwner?: boolean;
-  requireStaff?: boolean;
-  redirectTo?: string;
+export type StaffContext = {
+  merchant: Merchant;
+  staff: Staff;
+  supabase: SupabaseClient;
 };
 
-async function loadMerchantById(merchantId: string) {
-  const admin = createAdminClient();
-  const { data, error } = await admin
+export type MerchantAccessContext = {
+  merchant: Merchant;
+  supabase: SupabaseClient;
+  staff: Staff | null;
+};
+
+export async function getOwnerContext(): Promise<OwnerContext> {
+  const supabase = createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: merchant, error } = await supabase
     .from("merchants")
     .select("*")
-    .eq("id", merchantId)
-    .maybeSingle<Merchant>();
-  if (error || !data) return null;
-  return data;
+    .eq("id", user.id)
+    .single<Merchant>();
+
+  if (error || !merchant) {
+    redirect("/login?error=Merchant%20profile%20not%20found");
+  }
+
+  return { merchant, supabase, userId: user.id };
 }
 
-export async function getMerchantContext(
-  options: MerchantContextOptions = {}
-): Promise<MerchantContext> {
+export async function getStaffContext(): Promise<StaffContext> {
+  const session = await getStaffDeviceSessionFromCookies();
+  if (!session) {
+    redirect("/login");
+  }
+
+  const admin = createAdminClient();
+  const [{ data: merchant }, { data: staff }] = await Promise.all([
+    admin.from("merchants").select("*").eq("id", session.merchantId).maybeSingle<Merchant>(),
+    admin
+      .from("staff")
+      .select("*")
+      .eq("id", session.staffId)
+      .eq("merchant_id", session.merchantId)
+      .maybeSingle<Staff>()
+  ]);
+
+  if (!merchant || !staff) {
+    redirect("/login?error=Staff%20session%20expired");
+  }
+
+  return { merchant, staff, supabase: admin };
+}
+
+export async function getMerchantAccessContext(): Promise<MerchantAccessContext> {
   const supabase = createClient();
   const {
     data: { user }
@@ -49,49 +87,28 @@ export async function getMerchantContext(
       redirect("/login?error=Merchant%20profile%20not%20found");
     }
 
-    if (options.requireStaff) {
-      redirect("/dashboard");
-    }
-
-    return {
-      merchant,
-      role: "owner",
-      supabase,
-      authType: "supabase",
-      userId: user.id
-    };
+    return { merchant, supabase, staff: null };
   }
 
-  const deviceSession = await getDeviceSessionFromCookies();
-  if (!deviceSession) {
-    redirect(options.redirectTo ?? "/device");
+  const session = await getStaffDeviceSessionFromCookies();
+  if (!session) {
+    redirect("/login");
   }
 
-  const merchant = await loadMerchantById(deviceSession.merchantId);
-  if (!merchant) {
-    redirect("/device?error=Business%20session%20expired");
+  const admin = createAdminClient();
+  const [{ data: merchant }, { data: staff }] = await Promise.all([
+    admin.from("merchants").select("*").eq("id", session.merchantId).maybeSingle<Merchant>(),
+    admin
+      .from("staff")
+      .select("*")
+      .eq("id", session.staffId)
+      .eq("merchant_id", session.merchantId)
+      .maybeSingle<Staff>()
+  ]);
+
+  if (!merchant || !staff) {
+    redirect("/login?error=Staff%20session%20expired");
   }
 
-  if (options.requireOwner && deviceSession.role !== "owner") {
-    redirect("/staff");
-  }
-
-  if (options.requireStaff && deviceSession.role !== "staff") {
-    redirect("/dashboard");
-  }
-
-  return {
-    merchant,
-    role: deviceSession.role,
-    supabase: createAdminClient(),
-    authType: "device"
-  };
-}
-
-export async function getOwnerContext() {
-  return getMerchantContext({ requireOwner: true });
-}
-
-export async function getStaffContext() {
-  return getMerchantContext({ requireStaff: true });
+  return { merchant, supabase: admin, staff };
 }

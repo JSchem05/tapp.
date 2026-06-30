@@ -1,9 +1,8 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import {
-  clearDeviceSessionCookie,
   DEVICE_COOKIE,
-  getDeviceSessionFromRequest,
-  parseDeviceSession
+  getStaffDeviceSessionFromRequest,
+  parseStaffDeviceSession
 } from "@/lib/device-session";
 import { getSupabaseKey, getSupabaseUrl } from "@/lib/supabase/env";
 import { NextResponse, type NextRequest } from "next/server";
@@ -33,7 +32,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname === "/") {
-    return NextResponse.redirect(new URL("/device", request.url));
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   if (isPublicRoute(pathname)) {
@@ -87,16 +86,16 @@ export async function middleware(request: NextRequest) {
     user = null;
   }
 
-  const deviceSession =
-    getDeviceSessionFromRequest(request) ??
-    parseDeviceSession(request.cookies.get(DEVICE_COOKIE)?.value);
+  const staffSession =
+    getStaffDeviceSessionFromRequest(request) ??
+    parseStaffDeviceSession(request.cookies.get(DEVICE_COOKIE)?.value);
 
-  const isOwner = Boolean(user) || hasSupabaseAuthCookie || deviceSession?.role === "owner";
-  const isStaff = deviceSession?.role === "staff" && !user && !hasSupabaseAuthCookie;
+  const isOwner = Boolean(user) || hasSupabaseAuthCookie;
+  const isStaff = Boolean(staffSession) && !isOwner;
 
   if (!isOwner && !isStaff) {
     if (isOwnerRoute(pathname) || isStaffRoute(pathname)) {
-      return NextResponse.redirect(new URL("/device", request.url));
+      return NextResponse.redirect(new URL("/login", request.url));
     }
     return response;
   }

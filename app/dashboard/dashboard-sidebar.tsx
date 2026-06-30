@@ -1,4 +1,4 @@
-import { logoutDevice } from "@/app/device/actions";
+import { logout } from "@/app/dashboard/actions";
 import {
   BarChart3,
   Grid3X3,
@@ -70,10 +70,10 @@ export function DashboardSidebar({
             </div>
           </div>
         </div>
-        <form action={logoutDevice} className="mt-3">
+        <form action={logout} className="mt-3">
           <button className="flex h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-semibold text-white/55 transition hover:bg-white/10 hover:text-white">
             <LogOut className="h-4 w-4" />
-            Log out this device
+            Log out
           </button>
         </form>
       </div>
