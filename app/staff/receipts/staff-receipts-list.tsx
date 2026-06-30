@@ -1,21 +1,27 @@
 "use client";
 
 import { setReceiptLiveInstant } from "@/app/staff/actions";
+import { ReceiptDetailModal, type ReceiptDetailData } from "@/components/receipt-detail-modal";
 import { formatCurrency, formatDateTime } from "@/lib/money";
 import type { Receipt, Tag } from "@/lib/types";
 import { useMemo, useState, useTransition } from "react";
 
 export function StaffReceiptsList({
+  merchantName,
   receipts,
   tags,
-  staffById
+  staffById,
+  baseUrl
 }: {
+  merchantName: string;
   receipts: Receipt[];
   tags: Tag[];
-  staffById: Map<string, string>;
+  staffById: Record<string, string>;
+  baseUrl: string;
 }) {
   const [query, setQuery] = useState("");
-  const [toast, setToast] = useState("");
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [detail, setDetail] = useState<ReceiptDetailData | null>(null);
   const [isPending, startTransition] = useTransition();
   const tagById = useMemo(() => new Map(tags.map((tag) => [tag.id, tag])), [tags]);
 
@@ -30,18 +36,29 @@ export function StaffReceiptsList({
     });
   }, [query, receipts, tagById]);
 
-  function showToast(message: string) {
-    setToast(message);
-    window.setTimeout(() => setToast(""), 2400);
+  function showToast(message: string, type: "success" | "error" = "success") {
+    setToast({ message, type });
+    window.setTimeout(() => setToast(null), 3000);
+  }
+
+  function openDetail(receipt: Receipt) {
+    const tag = tagById.get(receipt.tag_id);
+    setDetail({
+      merchantName,
+      receipt,
+      tagLabel: tag?.label ?? "Counter",
+      staffName: receipt.staff_id ? staffById[receipt.staff_id] ?? null : null,
+      receiptUrl: `${baseUrl}/r/${receipt.id}`
+    });
   }
 
   function handleSetLive(receiptId: string, tagLabel: string) {
     startTransition(async () => {
       try {
         const result = await setReceiptLiveInstant(receiptId);
-        showToast(`Now live on ${result.tagLabel || tagLabel}`);
+        showToast(`Now live on ${result.tagLabel || tagLabel}`, "success");
       } catch (error) {
-        showToast(error instanceof Error ? error.message : "Could not set receipt live.");
+        showToast(error instanceof Error ? error.message : "Could not set receipt live.", "error");
       }
     });
   }
@@ -51,7 +68,7 @@ export function StaffReceiptsList({
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-ink">Today&apos;s receipts</h1>
         <p className="mt-1 text-sm text-muted">
-          Set a receipt live instantly for its counter.
+          Click a row for details, or set a receipt live for its counter.
         </p>
       </div>
 
@@ -63,8 +80,12 @@ export function StaffReceiptsList({
       />
 
       {toast ? (
-        <p className="mb-4 rounded-[10px] bg-green-50 px-3 py-2 text-sm font-semibold text-green-700">
-          {toast}
+        <p
+          className={`mb-4 rounded-[10px] px-3 py-2 text-sm font-semibold ${
+            toast.type === "error" ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"
+          }`}
+        >
+          {toast.message}
         </p>
       ) : null}
 
@@ -87,7 +108,11 @@ export function StaffReceiptsList({
               {filtered.map((receipt) => {
                 const tag = tagById.get(receipt.tag_id);
                 return (
-                  <tr key={receipt.id} className="border-b border-line last:border-0">
+                  <tr
+                    key={receipt.id}
+                    className="cursor-pointer border-b border-line last:border-0 transition hover:bg-blueSoft/40"
+                    onClick={() => openDetail(receipt)}
+                  >
                     <td className="px-4 py-3 text-ink">{formatDateTime(receipt.created_at)}</td>
                     <td className="px-4 py-3 text-ink">{tag?.label ?? "Counter"}</td>
                     <td className="px-4 py-3 text-muted">
@@ -99,11 +124,14 @@ export function StaffReceiptsList({
                       {formatCurrency(receipt.total)}
                     </td>
                     <td className="px-4 py-3 text-muted">
-                      {receipt.staff_id && staffById.get(receipt.staff_id)
-                        ? staffById.get(receipt.staff_id)
+                      {receipt.staff_id && staffById[receipt.staff_id]
+                        ? staffById[receipt.staff_id]
                         : "—"}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td
+                      className="px-4 py-3 text-right"
+                      onClick={(event) => event.stopPropagation()}
+                    >
                       {!receipt.awaiting_items ? (
                         <button
                           type="button"
@@ -122,6 +150,12 @@ export function StaffReceiptsList({
           </table>
         )}
       </div>
+
+      <ReceiptDetailModal
+        detail={detail}
+        onClose={() => setDetail(null)}
+        onToast={showToast}
+      />
     </div>
   );
 }

@@ -15,6 +15,8 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 SUMUP_CLIENT_ID=your-sumup-client-id
 SUMUP_CLIENT_SECRET=your-sumup-client-secret
 SUMUP_WEBHOOK_SECRET=your-sumup-webhook-secret
+RESEND_API_KEY=your-resend-api-key
+RESEND_FROM_EMAIL=Tapp <onboarding@resend.dev>
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
