@@ -3,8 +3,14 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { Card } from "@/components/ui";
+import {
+  LoyaltyCardSection,
+  PromoBannerSection,
+  ReviewPromptSection
+} from "@/components/receipt-engagement-sections";
 import { joinReceiptOffers } from "@/app/receipt-engagement/actions";
 import { formatCurrency, formatDateTime } from "@/lib/money";
+import { getPromoConfig } from "@/lib/merchant-promo";
 import { cn } from "@/lib/utils";
 import type { Receipt, ReceiptItem, ReceiptMerchantProfile } from "@/lib/types";
 import {
@@ -20,7 +26,6 @@ import {
   Phone,
   Printer,
   Share2,
-  Star,
   Wifi
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -75,6 +80,7 @@ export function ReceiptView({
     name: merchantProfile?.name ?? merchantName,
     logo_url: merchantProfile?.logo_url ?? merchantLogoUrl ?? null
   };
+  const promo = getPromoConfig(profile);
 
   useEffect(() => {
     setCurrentUrl(window.location.href);
@@ -161,18 +167,29 @@ export function ReceiptView({
         </ReceiptSection>
       ) : null}
 
-      <ReviewSection profile={profile} delay={banner ? 240 : 180} />
-      <LoyaltySection
-        profile={profile}
-        customerEmail={receipt.customer_email}
-        delay={banner ? 300 : 240}
-      />
+      {profile.show_review && profile.google_review_url ? (
+        <ReceiptSection delay={banner ? 240 : 180}>
+          <ReviewPromptSection profile={profile} />
+        </ReceiptSection>
+      ) : null}
+
+      {profile.show_loyalty ? (
+        <ReceiptSection delay={banner ? 300 : 240}>
+          <LoyaltyCardSection profile={profile} />
+        </ReceiptSection>
+      ) : null}
+
+      {promo.showPromo && promo.headline ? (
+        <ReceiptSection delay={banner ? 360 : 300}>
+          <PromoBannerSection profile={profile} />
+        </ReceiptSection>
+      ) : null}
+
       <WifiSection
         profile={profile}
         notify={notify}
-        delay={banner ? 360 : 300}
+        delay={banner ? 420 : 360}
       />
-      <PromotionSection profile={profile} delay={banner ? 420 : 360} />
       <EmailOptInSection
         merchantId={merchantId}
         profile={profile}
@@ -284,100 +301,6 @@ function MerchantHeader({
           </div>
         ) : null}
       </header>
-    </ReceiptSection>
-  );
-}
-
-function ReviewSection({
-  profile,
-  delay
-}: {
-  profile: Partial<ReceiptMerchantProfile>;
-  delay: number;
-}) {
-  if (!profile.show_review || !profile.google_review_url) return null;
-
-  return (
-    <ReceiptSection delay={delay}>
-      <Card className="p-5">
-        <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FFFBEB] text-warning">
-            <Star className="h-5 w-5 fill-current" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold text-ink">Enjoyed it?</h2>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              Leave us a quick Google review. It helps local places grow.
-            </p>
-            <div className="mt-3 flex gap-1 text-warning" aria-hidden="true">
-              {Array.from({ length: 5 }).map((_, index) => (
-                <Star key={index} className="h-4 w-4 fill-current" />
-              ))}
-            </div>
-          </div>
-        </div>
-        <a
-          href={normalizeExternalUrl(profile.google_review_url)}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-[10px] bg-amber px-4 text-sm font-semibold text-white shadow-soft transition hover:bg-clay"
-        >
-          Leave a review
-        </a>
-      </Card>
-    </ReceiptSection>
-  );
-}
-
-function LoyaltySection({
-  profile,
-  customerEmail,
-  delay
-}: {
-  profile: Partial<ReceiptMerchantProfile>;
-  customerEmail?: string | null;
-  delay: number;
-}) {
-  if (!profile.show_loyalty) return null;
-
-  const goal = Math.max(1, Math.min(12, Number(profile.loyalty_goal ?? 6)));
-  const stamps = customerEmail ? 1 : 0;
-  const remaining = Math.max(goal - stamps, 0);
-  const reward = profile.loyalty_reward || "reward";
-
-  return (
-    <ReceiptSection delay={delay}>
-      <Card className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-ink">Loyalty card</h2>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              {remaining} {remaining === 1 ? "visit" : "visits"} to a free {reward}.
-            </p>
-          </div>
-          <span className="rounded-full bg-greenSoft px-3 py-1 text-xs font-semibold text-sage">
-            {stamps}/{goal}
-          </span>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2" aria-label={`${stamps} of ${goal} loyalty stamps`}>
-          {Array.from({ length: goal }).map((_, index) => (
-            <span
-              key={index}
-              className={cn(
-                "h-8 w-8 rounded-full border",
-                index < stamps
-                  ? "border-sage bg-greenSoft"
-                  : "border-line bg-white"
-              )}
-            />
-          ))}
-        </div>
-        {!customerEmail ? (
-          <p className="mt-3 text-xs leading-5 text-muted">
-            Join with your email below to start collecting stamps.
-          </p>
-        ) : null}
-      </Card>
     </ReceiptSection>
   );
 }
@@ -540,52 +463,6 @@ function QrSection({
           <span className="truncate">{url}</span>
           <Copy className="h-3.5 w-3.5 shrink-0 text-amber" />
         </button>
-      </Card>
-    </ReceiptSection>
-  );
-}
-
-function PromotionSection({
-  profile,
-  delay
-}: {
-  profile: Partial<ReceiptMerchantProfile>;
-  delay: number;
-}) {
-  if (!profile.show_ad || !profile.ad_headline) return null;
-
-  const color = normalizeHexColor(profile.ad_bg_color ?? "#2563EB");
-  const ctaHref = normalizeExternalUrl(profile.ad_cta_url ?? "");
-
-  return (
-    <ReceiptSection delay={delay}>
-      <Card
-        className="p-5"
-        style={{
-          backgroundColor: hexToRgba(color, 0.15),
-          borderColor: hexToRgba(color, 0.3)
-        }}
-      >
-        <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
-          <div>
-            <h2 className="text-lg font-semibold leading-snug text-ink">
-              {profile.ad_headline}
-            </h2>
-            {profile.ad_subtext ? (
-              <p className="mt-1 text-sm leading-6 text-muted">{profile.ad_subtext}</p>
-            ) : null}
-          </div>
-          {profile.ad_cta_label && ctaHref ? (
-            <a
-              href={ctaHref}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-amber px-4 text-sm font-semibold text-white shadow-soft transition hover:bg-clay"
-            >
-              {profile.ad_cta_label}
-            </a>
-          ) : null}
-        </div>
       </Card>
     </ReceiptSection>
   );
@@ -826,18 +703,6 @@ function domainLabel(value: string) {
   } catch {
     return value;
   }
-}
-
-function normalizeHexColor(value: string) {
-  return /^#[0-9a-f]{6}$/i.test(value) ? value : "#2563EB";
-}
-
-function hexToRgba(hex: string, alpha: number) {
-  const value = normalizeHexColor(hex).slice(1);
-  const red = Number.parseInt(value.slice(0, 2), 16);
-  const green = Number.parseInt(value.slice(2, 4), 16);
-  const finalChannel = Number.parseInt(value.slice(4, 6), 16);
-  return `rgba(${red}, ${green}, ${finalChannel}, ${alpha})`;
 }
 
 function ReceiptRow({ label, value }: { label: string; value: string }) {

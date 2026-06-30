@@ -25,6 +25,12 @@ export type Merchant = {
   ad_cta_label: string | null;
   ad_cta_url: string | null;
   ad_bg_color: string | null;
+  show_promo: boolean;
+  promo_headline: string | null;
+  promo_subtext: string | null;
+  promo_cta_label: string | null;
+  promo_cta_url: string | null;
+  promo_color: string | null;
   loyalty_goal: number | null;
   loyalty_reward: string | null;
   show_qr: boolean;
@@ -55,6 +61,12 @@ export type ReceiptMerchantProfile = Pick<
   | "ad_cta_label"
   | "ad_cta_url"
   | "ad_bg_color"
+  | "show_promo"
+  | "promo_headline"
+  | "promo_subtext"
+  | "promo_cta_label"
+  | "promo_cta_url"
+  | "promo_color"
   | "loyalty_goal"
   | "loyalty_reward"
   | "show_qr"

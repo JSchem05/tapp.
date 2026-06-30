@@ -1,5 +1,6 @@
 import { buildReceiptEmailHtml } from "@/lib/receipt-email";
 import { resolveMerchantIdForReceiptApi } from "@/lib/receipt-access";
+import { canSendResendEmailTo } from "@/lib/resend-config";
 import { getResend } from "@/lib/resend";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Receipt } from "@/lib/types";
@@ -27,6 +28,11 @@ export async function POST(
   const email = String(body.email ?? "").trim();
   if (!email || !email.includes("@")) {
     return NextResponse.json({ error: "Enter a valid email address" }, { status: 400 });
+  }
+
+  const sendCheck = canSendResendEmailTo(email);
+  if (!sendCheck.ok) {
+    return NextResponse.json({ error: sendCheck.error }, { status: 400 });
   }
 
   if (!process.env.RESEND_API_KEY) {

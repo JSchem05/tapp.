@@ -20,11 +20,13 @@ export type ReceiptDetailData = {
 export function ReceiptDetailModal({
   detail,
   onClose,
-  onToast
+  onToast,
+  sandboxRecipient = null
 }: {
   detail: ReceiptDetailData | null;
   onClose: () => void;
   onToast: (message: string, type?: "success" | "error") => void;
+  sandboxRecipient?: string | null;
 }) {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
@@ -134,12 +136,28 @@ export function ReceiptDetailModal({
 
         <div className="mt-5 rounded-[16px] border border-line bg-white p-4">
           <Label>Send by email</Label>
+          {sandboxRecipient ? (
+            <p className="mt-2 rounded-[10px] bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+              No custom domain yet — Resend only delivers to{" "}
+              <span className="font-semibold">{sandboxRecipient}</span> for now. Share the
+              receipt link or QR above with customers until you verify a domain at{" "}
+              <a
+                href="https://resend.com/domains"
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold underline"
+              >
+                resend.com/domains
+              </a>
+              .
+            </p>
+          ) : null}
           <div className="mt-2 flex flex-col gap-2 sm:flex-row">
             <Input
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="customer@email.com"
+              placeholder={sandboxRecipient ?? "customer@email.com"}
               className="flex-1"
             />
             <button

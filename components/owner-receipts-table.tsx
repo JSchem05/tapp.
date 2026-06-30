@@ -12,13 +12,15 @@ export function OwnerReceiptsTable({
   receipts,
   tags,
   staffById,
-  baseUrl
+  baseUrl,
+  sandboxRecipient = null
 }: {
   merchantName: string;
   receipts: Receipt[];
   tags: Tag[];
   staffById: Record<string, string>;
   baseUrl: string;
+  sandboxRecipient?: string | null;
 }) {
   const [detail, setDetail] = useState<ReceiptDetailData | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -128,6 +130,7 @@ export function OwnerReceiptsTable({
         detail={detail}
         onClose={() => setDetail(null)}
         onToast={showToast}
+        sandboxRecipient={sandboxRecipient}
       />
     </>
   );

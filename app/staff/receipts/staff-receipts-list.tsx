@@ -11,13 +11,15 @@ export function StaffReceiptsList({
   receipts,
   tags,
   staffById,
-  baseUrl
+  baseUrl,
+  sandboxRecipient = null
 }: {
   merchantName: string;
   receipts: Receipt[];
   tags: Tag[];
   staffById: Record<string, string>;
   baseUrl: string;
+  sandboxRecipient?: string | null;
 }) {
   const [query, setQuery] = useState("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -155,6 +157,7 @@ export function StaffReceiptsList({
         detail={detail}
         onClose={() => setDetail(null)}
         onToast={showToast}
+        sandboxRecipient={sandboxRecipient}
       />
     </div>
   );

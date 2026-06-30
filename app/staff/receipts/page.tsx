@@ -1,6 +1,7 @@
 import { StaffReceiptsList } from "@/app/staff/receipts/staff-receipts-list";
 import { getStaffContext } from "@/lib/merchant-context";
 import type { Receipt, Staff, Tag } from "@/lib/types";
+import { getResendSandboxRecipient } from "@/lib/resend-config";
 import { getBaseUrl } from "@/lib/url";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function StaffReceiptsPage() {
   const { supabase, merchant } = await getStaffContext();
   const baseUrl = getBaseUrl();
+  const sandboxRecipient = getResendSandboxRecipient();
   const todayKey = new Date().toISOString().slice(0, 10);
 
   const [{ data: receipts }, { data: tags }, { data: staffMembers }] = await Promise.all([
@@ -41,6 +43,7 @@ export default async function StaffReceiptsPage() {
       tags={tags ?? []}
       staffById={staffById}
       baseUrl={baseUrl}
+      sandboxRecipient={sandboxRecipient}
     />
   );
 }

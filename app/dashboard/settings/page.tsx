@@ -5,6 +5,7 @@ import {
 } from "@/app/dashboard/actions";
 import { CopyButton } from "@/components/copy-button";
 import { LogoUploadField } from "@/components/logo-upload-field";
+import { ReceiptPageSettings } from "@/components/receipt-page-settings";
 import { StaffList } from "@/components/staff-list";
 import { Card, Input, Label } from "@/components/ui";
 import { getOwnerContext } from "@/lib/merchant-context";
@@ -16,7 +17,6 @@ import {
   Globe,
   Instagram,
   MapPin,
-  Megaphone,
   Phone,
   QrCode,
   Save,
@@ -144,45 +144,7 @@ export default async function SettingsPage({
               />
             </SettingsGroup>
 
-            <SettingsGroup title="Reviews and loyalty">
-              <ToggleField
-                name="show_review"
-                label="Show Google review prompt"
-                defaultChecked={merchant.show_review ?? false}
-              />
-              <SettingInput name="google_review_url" label="Google review URL" defaultValue={merchant.google_review_url} placeholder="https://g.page/r/..." />
-              <ToggleField
-                name="show_loyalty"
-                label="Show loyalty card"
-                defaultChecked={merchant.show_loyalty ?? false}
-              />
-              <SettingInput name="loyalty_goal" label="Visits needed" defaultValue={String(merchant.loyalty_goal ?? 6)} placeholder="6" />
-              <SettingInput name="loyalty_reward" label="Reward" defaultValue={merchant.loyalty_reward} placeholder="free coffee" />
-            </SettingsGroup>
-
-            <SettingsGroup title="Promotion banner">
-              <ToggleField
-                name="show_ad"
-                label="Show promotion banner"
-                defaultChecked={merchant.show_ad ?? false}
-              />
-              <SettingInput name="ad_headline" label="Headline" defaultValue={merchant.ad_headline} placeholder="Happy Hour 5-7pm" icon={<Megaphone className="h-4 w-4" />} />
-              <SettingInput name="ad_subtext" label="Subtext" defaultValue={merchant.ad_subtext} placeholder="2 cocktails for €12" />
-              <SettingInput name="ad_cta_label" label="Button label" defaultValue={merchant.ad_cta_label} placeholder="See menu" />
-              <SettingInput name="ad_cta_url" label="Button URL" defaultValue={merchant.ad_cta_url} placeholder="https://example.com/menu" />
-              <div className="space-y-2">
-                <Label>Banner color</Label>
-                <div className="flex items-center gap-3">
-                  <input
-                    name="ad_bg_color"
-                    type="color"
-                    defaultValue={merchant.ad_bg_color ?? "#2563EB"}
-                    className="h-11 w-16 rounded-[10px] border border-line bg-white p-1 shadow-sm"
-                  />
-                  <span className="text-sm text-muted">Used as a soft tint on the customer receipt.</span>
-                </div>
-              </div>
-            </SettingsGroup>
+            <ReceiptPageSettings merchant={merchant} />
           </div>
 
           <SaveButton label="Save changes" />

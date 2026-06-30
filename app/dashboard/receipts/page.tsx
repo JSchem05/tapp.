@@ -1,6 +1,7 @@
 import { OwnerReceiptsTable } from "@/components/owner-receipts-table";
 import { getOwnerContext } from "@/lib/merchant-context";
 import type { Receipt, Tag } from "@/lib/types";
+import { getResendSandboxRecipient } from "@/lib/resend-config";
 import { getBaseUrl } from "@/lib/url";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function ReceiptsPage() {
   const { supabase, merchant } = await getOwnerContext();
   const baseUrl = getBaseUrl();
+  const sandboxRecipient = getResendSandboxRecipient();
 
   const [{ data: receipts }, { data: tags }, { data: staffMembers }] = await Promise.all([
     supabase
@@ -45,6 +47,7 @@ export default async function ReceiptsPage() {
             tags={tags ?? []}
             staffById={staffById}
             baseUrl={baseUrl}
+            sandboxRecipient={sandboxRecipient}
           />
         )}
       </section>
