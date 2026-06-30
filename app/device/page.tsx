@@ -2,6 +2,8 @@ import { loginWithStaffCode } from "@/app/device/actions";
 import { Card, Input, Label } from "@/components/ui";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 export default function DeviceLoginPage({
   searchParams
 }: {

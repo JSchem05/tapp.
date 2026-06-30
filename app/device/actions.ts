@@ -2,6 +2,7 @@
 
 import { clearStaffDeviceSession, setStaffDeviceSession } from "@/lib/device-session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import type { Staff } from "@/lib/types";
 import { redirect } from "next/navigation";
 
@@ -24,6 +25,10 @@ export async function loginWithStaffCode(formData: FormData) {
   if (!staff) {
     redirect("/device?error=Code%20not%20recognised");
   }
+
+  // Clear any owner session on this device so staff routes are not blocked.
+  const supabase = createClient();
+  await supabase.auth.signOut();
 
   await setStaffDeviceSession({
     staffId: staff.id,

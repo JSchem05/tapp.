@@ -39,7 +39,7 @@ export default async function SettingsPage({
     .returns<Tag[]>();
   const { data: staff } = await supabase
     .from("staff")
-    .select("*")
+    .select("id, name, code, merchant_id, created_at")
     .eq("merchant_id", merchant.id)
     .order("created_at", { ascending: true })
     .returns<Staff[]>();
@@ -214,16 +214,25 @@ export default async function SettingsPage({
           {(staff ?? []).map((member) => (
             <div
               key={member.id}
-              className="flex items-center justify-between rounded-[12px] border border-line bg-white px-3 py-2"
+              className="flex flex-col gap-3 rounded-[12px] border border-line bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
             >
-              <div>
-                <p className="text-sm font-semibold text-ink">{member.name}</p>
-                <p className="mt-0.5 font-mono text-xs font-bold tracking-[0.2em] text-muted">
-                  {member.code}
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-ink">
+                  {member.name}
+                  <span className="px-1.5 text-muted">·</span>
+                  <span className="font-mono text-base font-extrabold tracking-[0.2em] text-ink">
+                    {member.code || "—"}
+                  </span>
+                </p>
+                <p className="mt-1 text-xs text-muted">
+                  Staff sign in at <span className="font-semibold text-ink">/device</span> with
+                  this code
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <CopyButton value={member.code} />
+              <div className="flex shrink-0 items-center gap-2">
+                {member.code ? (
+                  <CopyButton value={member.code} label={`Copy ${member.code}`} />
+                ) : null}
                 <form action={deleteStaffMember}>
                   <input type="hidden" name="staff_id" value={member.id} />
                   <button className="rounded-[8px] border border-line px-3 py-1.5 text-xs font-semibold text-ink hover:bg-[#FAFAFA]">
