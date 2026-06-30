@@ -57,6 +57,8 @@ pnpm run db:migrate
 - Never edit a migration file after it has been applied to production.
 - Never assume production has a column/table just because the app code references it — run `pnpm run db:migrate` after adding a migration.
 
+If you see `null value in column "pin_code"` when adding staff, production still has the legacy column — run `pnpm run db:migrate` to apply `20260630140000_drop_staff_pin_code.sql`.
+
 ## Reset (development only)
 
 `reset.sql` truncates operational data for local testing. It is not a migration and should not be run against production.
