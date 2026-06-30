@@ -4,7 +4,7 @@ import { createReceipt } from "@/app/dashboard/receipt/new/actions";
 import { ReceiptCard } from "@/components/receipt-view";
 import { Card, Input, Label, SecondaryButton } from "@/components/ui";
 import { calculateReceiptTotals, formatCurrency } from "@/lib/money";
-import type { PaymentMethod, ReceiptItem, Tag } from "@/lib/types";
+import type { PaymentMethod, Receipt, ReceiptItem, Tag } from "@/lib/types";
 import { Minus, Plus, ReceiptText, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -15,19 +15,25 @@ export function ReceiptForm({
   defaultTagId,
   error,
   merchantName,
-  merchantLogoUrl
+  merchantLogoUrl,
+  awaitingReceipt
 }: {
   tags: Tag[];
   defaultTagId?: string;
   error?: string;
   merchantName: string;
   merchantLogoUrl?: string | null;
+  awaitingReceipt?: Receipt | null;
 }) {
-  const [selectedTagId, setSelectedTagId] = useState(defaultTagId ?? tags[0]?.id);
+  const [selectedTagId, setSelectedTagId] = useState(
+    awaitingReceipt?.tag_id ?? defaultTagId ?? tags[0]?.id
+  );
   const [items, setItems] = useState<DraftItem[]>([
     { key: crypto.randomUUID(), name: "", qty: 1, price: 0 }
   ]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Card");
+  const [staffPinCode, setStaffPinCode] = useState("");
+  const isAwaitingFlow = Boolean(awaitingReceipt);
 
   const totals = useMemo(() => calculateReceiptTotals(items), [items]);
   const previewItems = items
@@ -37,6 +43,7 @@ export function ReceiptForm({
       price: Number(price) || 0
     }))
     .filter((item) => item.qty > 0);
+  const displayTotal = isAwaitingFlow ? Number(awaitingReceipt?.total ?? totals.total) : totals.total;
   const previewReceipt = {
     id: "preview",
     created_at: new Date().toISOString(),
@@ -45,7 +52,7 @@ export function ReceiptForm({
       : [{ name: "Flat white", qty: 1, price: 4.2 }],
     subtotal: totals.subtotal,
     vat: totals.vat,
-    total: totals.total,
+    total: displayTotal,
     payment_method: paymentMethod,
     customer_email: null
   };
@@ -77,6 +84,9 @@ export function ReceiptForm({
       <input type="hidden" name="items" value={serializedItems} />
       <input type="hidden" name="tag_id" value={selectedTagId} />
       <input type="hidden" name="payment_method" value={paymentMethod} />
+      <input type="hidden" name="awaiting_receipt_id" value={awaitingReceipt?.id ?? ""} />
+      <input type="hidden" name="locked_total" value={String(awaitingReceipt?.total ?? "")} />
+      <input type="hidden" name="staff_pin_code" value={staffPinCode} />
 
       <Card className="space-y-6 p-6">
         <div>
@@ -85,9 +95,17 @@ export function ReceiptForm({
             Build the customer receipt
           </h1>
           <p className="mt-1 text-sm text-muted">
-            Choose a counter, add items, and push the receipt live.
+            {isAwaitingFlow
+              ? "Finish item details for a charged SumUp payment before it goes live."
+              : "Choose a counter, add items, and push the receipt live."}
           </p>
         </div>
+        {isAwaitingFlow ? (
+          <p className="rounded-[10px] bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            Awaiting items receipt: total is locked at{" "}
+            <span className="font-semibold">{formatCurrency(Number(awaitingReceipt?.total ?? 0))}</span>
+          </p>
+        ) : null}
 
         {error ? (
           <p className="rounded-[10px] bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -103,6 +121,7 @@ export function ReceiptForm({
                 key={tag.id}
                 type="button"
                 onClick={() => setSelectedTagId(tag.id)}
+                disabled={isAwaitingFlow && tag.id !== awaitingReceipt?.tag_id}
                 className={`rounded-full border px-4 py-2 text-sm font-bold transition ${
                   selectedTagId === tag.id
                     ? "border-ink bg-ink text-white shadow-soft"
@@ -225,16 +244,32 @@ export function ReceiptForm({
             ))}
           </div>
         </div>
+        <div className="space-y-2">
+          <Label>Who&apos;s ringing this up? (optional PIN)</Label>
+          <Input
+            value={staffPinCode}
+            onChange={(event) =>
+              setStaffPinCode(event.target.value.replace(/\D/g, "").slice(0, 4))
+            }
+            placeholder="4-digit PIN"
+            inputMode="numeric"
+            maxLength={4}
+          />
+        </div>
 
         <div className="rounded-[16px] border border-line bg-white p-4">
           <SummaryRow label="Subtotal" value={formatCurrency(totals.subtotal)} />
           <SummaryRow label="VAT 18%" value={formatCurrency(totals.vat)} />
-          <SummaryRow label="Total" value={formatCurrency(totals.total)} strong />
+          <SummaryRow
+            label={isAwaitingFlow ? "Total (locked)" : "Total"}
+            value={formatCurrency(displayTotal)}
+            strong
+          />
         </div>
 
         <button className="flex h-14 w-full items-center justify-center gap-2 rounded-[10px] bg-ink px-4 text-base font-extrabold text-white shadow-soft transition hover:bg-clay hover:shadow-lift">
           <ReceiptText className="h-5 w-5" />
-          Create Receipt
+          {isAwaitingFlow ? "Complete Receipt" : "Create Receipt"}
         </button>
       </Card>
 

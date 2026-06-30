@@ -1,9 +1,14 @@
-import { updateMerchantSettings } from "@/app/dashboard/actions";
+import {
+  addStaffMember,
+  connectSumUp,
+  deleteStaffMember,
+  updateMerchantSettings
+} from "@/app/dashboard/actions";
 import { CopyButton } from "@/components/copy-button";
 import { LogoUploadField } from "@/components/logo-upload-field";
 import { Card, Input, Label } from "@/components/ui";
 import { getAuthedMerchant } from "@/lib/auth";
-import type { Tag } from "@/lib/types";
+import type { PosConnection, Staff, Tag } from "@/lib/types";
 import { getBaseUrl } from "@/lib/url";
 import {
   AlertTriangle,
@@ -33,6 +38,18 @@ export default async function SettingsPage({
     .eq("merchant_id", merchant.id)
     .order("created_at", { ascending: true })
     .returns<Tag[]>();
+  const { data: staff } = await supabase
+    .from("staff")
+    .select("*")
+    .eq("merchant_id", merchant.id)
+    .order("created_at", { ascending: true })
+    .returns<Staff[]>();
+  const { data: sumupConnection } = await supabase
+    .from("pos_connections")
+    .select("*")
+    .eq("merchant_id", merchant.id)
+    .eq("provider", "sumup")
+    .maybeSingle<PosConnection>();
 
   const baseUrl = getBaseUrl();
 
@@ -212,12 +229,72 @@ export default async function SettingsPage({
         </div>
       </Card>
 
-      <Card className="border-dashed bg-white/70 p-6 opacity-80">
+      <Card className="p-6">
+        <SectionHeader
+          icon={<Store className="h-5 w-5" />}
+          title="Staff PINs"
+          description="Optional cashier PINs used to tag each order and receipt."
+        />
+        <form action={addStaffMember} className="mt-5 grid gap-3 sm:grid-cols-[1fr_160px_auto]">
+          <Input name="name" placeholder="Staff name" required />
+          <Input
+            name="pin_code"
+            placeholder="4-digit PIN"
+            minLength={4}
+            maxLength={4}
+            pattern="\d{4}"
+            inputMode="numeric"
+            required
+          />
+          <button className="h-11 rounded-[10px] bg-ink px-4 text-sm font-semibold text-white shadow-soft">
+            Add staff
+          </button>
+        </form>
+        <div className="mt-4 space-y-2">
+          {(staff ?? []).map((member) => (
+            <div
+              key={member.id}
+              className="flex items-center justify-between rounded-[12px] border border-line bg-white px-3 py-2"
+            >
+              <div>
+                <p className="text-sm font-semibold text-ink">{member.name}</p>
+                <p className="text-xs text-muted">PIN {member.pin_code}</p>
+              </div>
+              <form action={deleteStaffMember}>
+                <input type="hidden" name="staff_id" value={member.id} />
+                <button className="rounded-[8px] border border-line px-3 py-1.5 text-xs font-semibold text-ink hover:bg-[#FAFAFA]">
+                  Remove
+                </button>
+              </form>
+            </div>
+          ))}
+          {(staff ?? []).length === 0 ? (
+            <p className="text-sm text-muted">
+              No staff added yet. PIN tagging stays optional for each order.
+            </p>
+          ) : null}
+        </div>
+      </Card>
+
+      <Card className="p-6">
         <SectionHeader
           icon={<Cable className="h-5 w-5" />}
-          title="Connections"
-          description="POS integrations are coming soon."
+          title="Integrations"
+          description="Connect SumUp to receive card transactions as awaiting-item receipts."
         />
+        <div className="mt-5 flex items-center justify-between rounded-[14px] border border-line bg-white px-4 py-3">
+          <div>
+            <p className="text-sm font-semibold text-ink">SumUp</p>
+            <p className="text-xs text-muted">
+              {sumupConnection ? "Connected" : "Not connected"}
+            </p>
+          </div>
+          <form action={connectSumUp}>
+            <button className="h-10 rounded-[10px] bg-ink px-4 text-sm font-semibold text-white shadow-soft">
+              {sumupConnection ? "Reconnect SumUp" : "Connect SumUp"}
+            </button>
+          </form>
+        </div>
       </Card>
 
       <Card className="border-red-100 bg-red-50/70 p-6">

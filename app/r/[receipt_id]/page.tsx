@@ -22,6 +22,7 @@ export default async function ReceiptPermalinkPage({
     .from("receipts")
     .select("*")
     .eq("id", params.receipt_id)
+    .eq("awaiting_items", false)
     .maybeSingle<Receipt>();
 
   console.log("[permalink-receipt] receipt lookup", {

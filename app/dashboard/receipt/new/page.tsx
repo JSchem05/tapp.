@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function NewReceiptPage({
   searchParams
 }: {
-  searchParams?: { tag?: string; receipt?: string; error?: string };
+  searchParams?: { tag?: string; receipt?: string; awaiting?: string; error?: string };
 }) {
   const { supabase, merchant } = await getAuthedMerchant();
   const { data: tags } = await supabase
@@ -20,6 +20,17 @@ export default async function NewReceiptPage({
     .eq("merchant_id", merchant.id)
     .order("created_at", { ascending: true })
     .returns<Tag[]>();
+  let awaitingReceipt: Receipt | null = null;
+  if (searchParams?.awaiting) {
+    const { data } = await supabase
+      .from("receipts")
+      .select("*")
+      .eq("id", searchParams.awaiting)
+      .eq("merchant_id", merchant.id)
+      .eq("awaiting_items", true)
+      .single<Receipt>();
+    awaitingReceipt = data ?? null;
+  }
 
   if (searchParams?.receipt) {
     const { data: receipt } = await supabase
@@ -65,10 +76,11 @@ export default async function NewReceiptPage({
   return (
     <ReceiptForm
       tags={tags}
-      defaultTagId={searchParams?.tag}
+      defaultTagId={searchParams?.tag ?? awaitingReceipt?.tag_id}
       error={searchParams?.error}
       merchantName={merchant.name}
       merchantLogoUrl={merchant.logo_url}
+      awaitingReceipt={awaitingReceipt}
     />
   );
 }

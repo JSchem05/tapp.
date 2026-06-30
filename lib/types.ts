@@ -79,11 +79,13 @@ export type Receipt = {
   id: string;
   merchant_id: string;
   tag_id: string;
+  staff_id: string | null;
   items: ReceiptItem[];
   subtotal: number;
   vat: number;
   total: number;
   payment_method: PaymentMethod;
+  awaiting_items: boolean;
   is_latest: boolean;
   customer_email: string | null;
   created_at: string;
@@ -170,11 +172,30 @@ export type Order = {
   id: string;
   merchant_id: string;
   tag_id: string;
+  staff_id: string | null;
   items: PosOrderItem[];
   subtotal: number;
   vat: number;
   total: number;
   payment_method: "card" | "cash";
   status: "open" | "completed" | "cancelled";
+  created_at: string;
+};
+
+export type Staff = {
+  id: string;
+  merchant_id: string;
+  name: string;
+  pin_code: string;
+  created_at: string;
+};
+
+export type PosConnection = {
+  id: string;
+  merchant_id: string;
+  provider: string;
+  access_token: string;
+  refresh_token: string | null;
+  external_merchant_id: string | null;
   created_at: string;
 };

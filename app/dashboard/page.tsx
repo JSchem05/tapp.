@@ -6,6 +6,7 @@ import { getAuthedMerchant } from "@/lib/auth";
 import type { Receipt, Tag } from "@/lib/types";
 import {
   ArrowUpRight,
+  CircleAlert,
   Bell,
   CalendarDays,
   ChevronRight,
@@ -50,6 +51,9 @@ export default async function DashboardPage({
     ]);
 
   const allReceipts = receipts ?? [];
+  const awaitingReceipts = allReceipts
+    .filter((receipt) => receipt.awaiting_items)
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
   const latestByTag = new Map(
     (latestReceipts ?? []).map((receipt) => [receipt.tag_id, receipt])
   );
@@ -105,6 +109,30 @@ export default async function DashboardPage({
         <p className="rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-red-700">
           {searchParams.error}
         </p>
+      ) : null}
+      {awaitingReceipts.length > 0 ? (
+        <section className="rounded-[16px] border border-amber-200 bg-amber-50 p-4">
+          <div className="flex items-center gap-2">
+            <CircleAlert className="h-4 w-4 text-amber-700" />
+            <p className="text-sm font-semibold text-amber-900">
+              Awaiting items ({awaitingReceipts.length})
+            </p>
+          </div>
+          <div className="mt-3 grid gap-2 md:grid-cols-2">
+            {awaitingReceipts.map((receipt) => (
+              <Link
+                key={receipt.id}
+                href={`/dashboard/receipt/new?awaiting=${receipt.id}`}
+                className="rounded-[12px] border border-amber-200 bg-white px-3 py-2 text-sm hover:bg-amber-100/30"
+              >
+                <p className="font-semibold text-ink">
+                  {tagById.get(receipt.tag_id)?.label ?? "Counter"} - {formatCurrency(receipt.total)}
+                </p>
+                <p className="text-xs text-muted">{formatDateTime(receipt.created_at)}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -232,7 +260,7 @@ export default async function DashboardPage({
                     </div>
                   </td>
                   <td className="px-5 py-3 text-sm text-muted">
-                    {receipt.items.length} items
+                    {receipt.awaiting_items ? "Awaiting items" : `${receipt.items.length} items`}
                   </td>
                   <td className="px-5 py-3 text-sm font-bold text-ink">
                     {formatCurrency(receipt.total)}
@@ -243,13 +271,26 @@ export default async function DashboardPage({
                     </span>
                   </td>
                   <td className="px-5 py-3">
-                    <span className="rounded-full bg-ink px-3 py-1 text-xs font-bold text-white">
-                      Paid
-                    </span>
+                    {receipt.awaiting_items ? (
+                      <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900">
+                        Awaiting items
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-ink px-3 py-1 text-xs font-bold text-white">
+                        Paid
+                      </span>
+                    )}
                   </td>
                   <td className="px-5 py-3 text-right">
-                    <Link href={`/r/${receipt.id}`} className="text-sm font-bold text-ink">
-                      View
+                    <Link
+                      href={
+                        receipt.awaiting_items
+                          ? `/dashboard/receipt/new?awaiting=${receipt.id}`
+                          : `/r/${receipt.id}`
+                      }
+                      className="text-sm font-bold text-ink"
+                    >
+                      {receipt.awaiting_items ? "Complete" : "View"}
                     </Link>
                   </td>
                 </tr>

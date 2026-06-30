@@ -47,11 +47,13 @@ create table if not exists public.receipts (
   id uuid primary key default gen_random_uuid(),
   merchant_id uuid not null references public.merchants(id) on delete cascade,
   tag_id uuid not null references public.tags(id) on delete cascade,
+  staff_id uuid,
   items jsonb not null,
   subtotal numeric(10, 2) not null,
   vat numeric(10, 2) not null,
   total numeric(10, 2) not null,
   payment_method text not null check (payment_method in ('Card', 'Cash', 'Other')),
+  awaiting_items boolean not null default false,
   is_latest boolean not null default false,
   customer_email text,
   created_at timestamptz not null default now(),
@@ -59,7 +61,9 @@ create table if not exists public.receipts (
 );
 
 alter table public.receipts
-  add column if not exists customer_email text;
+  add column if not exists customer_email text,
+  add column if not exists awaiting_items boolean not null default false,
+  add column if not exists staff_id uuid;
 
 create table if not exists public.categories (
   id uuid primary key default gen_random_uuid(),
@@ -109,6 +113,7 @@ create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),
   merchant_id uuid not null references public.merchants(id) on delete cascade,
   tag_id uuid not null references public.tags(id) on delete restrict,
+  staff_id uuid,
   items jsonb not null,
   subtotal numeric(10, 2) not null,
   vat numeric(10, 2) not null,
@@ -118,6 +123,56 @@ create table if not exists public.orders (
   created_at timestamptz not null default now(),
   constraint orders_items_array check (jsonb_typeof(items) = 'array')
 );
+
+alter table public.orders
+  add column if not exists staff_id uuid;
+
+create table if not exists public.staff (
+  id uuid primary key default gen_random_uuid(),
+  merchant_id uuid not null references public.merchants(id) on delete cascade,
+  name text not null,
+  pin_code char(4) not null,
+  created_at timestamptz not null default now(),
+  constraint staff_pin_digits check (pin_code ~ '^[0-9]{4}$')
+);
+
+create table if not exists public.pos_connections (
+  id uuid primary key default gen_random_uuid(),
+  merchant_id uuid not null references public.merchants(id) on delete cascade,
+  provider text not null,
+  access_token text not null,
+  refresh_token text,
+  external_merchant_id text,
+  created_at timestamptz not null default now()
+);
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'receipts_staff_id_fkey'
+  ) then
+    alter table public.receipts
+      add constraint receipts_staff_id_fkey
+      foreign key (staff_id) references public.staff(id) on delete set null;
+  end if;
+end
+$$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'orders_staff_id_fkey'
+  ) then
+    alter table public.orders
+      add constraint orders_staff_id_fkey
+      foreign key (staff_id) references public.staff(id) on delete set null;
+  end if;
+end
+$$;
 
 create table if not exists public.customers (
   id uuid primary key default gen_random_uuid(),
@@ -144,13 +199,19 @@ create unique index if not exists receipts_one_latest_per_tag
 create index if not exists tags_merchant_id_idx on public.tags(merchant_id);
 create index if not exists receipts_merchant_id_created_at_idx on public.receipts(merchant_id, created_at desc);
 create index if not exists receipts_tag_latest_idx on public.receipts(tag_id, is_latest);
+create index if not exists receipts_merchant_awaiting_idx on public.receipts(merchant_id, awaiting_items, created_at desc);
 create index if not exists categories_merchant_sort_idx on public.categories(merchant_id, sort_order);
 create index if not exists menu_items_merchant_category_sort_idx on public.menu_items(merchant_id, category_id, sort_order);
 create index if not exists modifier_groups_merchant_idx on public.modifier_groups(merchant_id);
 create index if not exists modifiers_group_idx on public.modifiers(group_id);
 create index if not exists orders_merchant_created_at_idx on public.orders(merchant_id, created_at desc);
+create index if not exists orders_staff_id_idx on public.orders(staff_id);
+create index if not exists receipts_staff_id_idx on public.receipts(staff_id);
 create unique index if not exists customers_merchant_email_key on public.customers(merchant_id, lower(email));
 create unique index if not exists loyalty_cards_merchant_customer_key on public.loyalty_cards(merchant_id, customer_id);
+create index if not exists staff_merchant_created_at_idx on public.staff(merchant_id, created_at desc);
+create unique index if not exists staff_merchant_pin_code_key on public.staff(merchant_id, pin_code);
+create unique index if not exists pos_connections_merchant_provider_key on public.pos_connections(merchant_id, provider);
 
 alter table public.merchants enable row level security;
 alter table public.tags enable row level security;
@@ -163,6 +224,8 @@ alter table public.item_modifier_groups enable row level security;
 alter table public.orders enable row level security;
 alter table public.customers enable row level security;
 alter table public.loyalty_cards enable row level security;
+alter table public.staff enable row level security;
+alter table public.pos_connections enable row level security;
 
 insert into storage.buckets (id, name, public)
 values ('logos', 'logos', true)
@@ -223,7 +286,7 @@ drop policy if exists "Public can read receipts" on public.receipts;
 create policy "Public can read receipts"
   on public.receipts for select
   to anon
-  using (true);
+  using (is_latest = true and awaiting_items = false);
 
 drop policy if exists "Merchants can create their receipts" on public.receipts;
 create policy "Merchants can create their receipts"
@@ -307,6 +370,20 @@ create policy "Merchant owns item_modifier_groups"
 drop policy if exists "Merchant owns orders" on public.orders;
 create policy "Merchant owns orders"
   on public.orders for all
+  to authenticated
+  using (merchant_id = auth.uid())
+  with check (merchant_id = auth.uid());
+
+drop policy if exists "Merchant owns staff" on public.staff;
+create policy "Merchant owns staff"
+  on public.staff for all
+  to authenticated
+  using (merchant_id = auth.uid())
+  with check (merchant_id = auth.uid());
+
+drop policy if exists "Merchant owns pos connections" on public.pos_connections;
+create policy "Merchant owns pos connections"
+  on public.pos_connections for all
   to authenticated
   using (merchant_id = auth.uid())
   with check (merchant_id = auth.uid());

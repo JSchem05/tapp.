@@ -1,8 +1,8 @@
 "use server";
 
 import { getAuthedMerchant } from "@/lib/auth";
-import { calculateReceiptTotals } from "@/lib/money";
-import type { PaymentMethod, ReceiptItem, Tag } from "@/lib/types";
+import { VAT_RATE, calculateReceiptTotals, roundMoney } from "@/lib/money";
+import type { PaymentMethod, Receipt, ReceiptItem, Staff, Tag } from "@/lib/types";
 import { redirect } from "next/navigation";
 
 const PAYMENT_METHODS = new Set(["Card", "Cash", "Other"]);
@@ -12,6 +12,9 @@ export async function createReceipt(formData: FormData) {
   const tagId = String(formData.get("tag_id") ?? "");
   const paymentMethod = String(formData.get("payment_method") ?? "Card");
   const rawItems = String(formData.get("items") ?? "[]");
+  const awaitingReceiptId = String(formData.get("awaiting_receipt_id") ?? "");
+  const lockedTotal = Number(formData.get("locked_total") ?? NaN);
+  const staffPinCode = String(formData.get("staff_pin_code") ?? "").trim();
 
   if (!tagId) {
     redirect("/dashboard/receipt/new?error=Select%20an%20NFC%20puck");
@@ -52,6 +55,22 @@ export async function createReceipt(formData: FormData) {
   }
 
   const totals = calculateReceiptTotals(items);
+  let staffId: string | null = null;
+  if (staffPinCode) {
+    if (!/^\d{4}$/.test(staffPinCode)) {
+      redirect("/dashboard/receipt/new?error=Staff%20PIN%20must%20be%204%20digits");
+    }
+    const { data: staff } = await supabase
+      .from("staff")
+      .select("*")
+      .eq("merchant_id", merchant.id)
+      .eq("pin_code", staffPinCode)
+      .maybeSingle<Staff>();
+    if (!staff) {
+      redirect("/dashboard/receipt/new?error=Staff%20PIN%20was%20not%20recognized");
+    }
+    staffId = staff.id;
+  }
 
   const { error: updateError } = await supabase
     .from("receipts")
@@ -64,6 +83,51 @@ export async function createReceipt(formData: FormData) {
     redirect(`/dashboard/receipt/new?error=${encodeURIComponent(updateError.message)}`);
   }
 
+  if (awaitingReceiptId) {
+    const { data: awaitingReceipt } = await supabase
+      .from("receipts")
+      .select("*")
+      .eq("id", awaitingReceiptId)
+      .eq("merchant_id", merchant.id)
+      .eq("awaiting_items", true)
+      .single<Receipt>();
+
+    if (!awaitingReceipt) {
+      redirect("/dashboard/receipt/new?error=Awaiting%20receipt%20was%20not%20found");
+    }
+
+    const chargedTotal = Number.isFinite(lockedTotal) ? roundMoney(lockedTotal) : roundMoney(Number(awaitingReceipt.total));
+    const chargedSubtotal = roundMoney(chargedTotal / (1 + VAT_RATE));
+    const chargedVat = roundMoney(chargedTotal - chargedSubtotal);
+    const { data: receipt, error: completeError } = await supabase
+      .from("receipts")
+      .update({
+        items,
+        subtotal: chargedSubtotal,
+        vat: chargedVat,
+        total: chargedTotal,
+        payment_method: paymentMethod as PaymentMethod,
+        staff_id: staffId,
+        awaiting_items: false,
+        is_latest: true
+      })
+      .eq("id", awaitingReceipt.id)
+      .eq("merchant_id", merchant.id)
+      .eq("tag_id", tag.id)
+      .select("id")
+      .single<{ id: string }>();
+
+    if (completeError || !receipt) {
+      redirect(
+        `/dashboard/receipt/new?error=${encodeURIComponent(
+          completeError?.message ?? "Awaiting receipt could not be completed"
+        )}`
+      );
+    }
+
+    redirect(`/dashboard/receipt/new?receipt=${receipt.id}`);
+  }
+
   const { data: receipt, error: insertError } = await supabase
     .from("receipts")
     .insert({
@@ -74,6 +138,8 @@ export async function createReceipt(formData: FormData) {
       vat: totals.vat,
       total: totals.total,
       payment_method: paymentMethod as PaymentMethod,
+      staff_id: staffId,
+      awaiting_items: false,
       is_latest: true
     })
     .select("id")

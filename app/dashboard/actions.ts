@@ -1,6 +1,7 @@
 "use server";
 
 import { getAuthedMerchant } from "@/lib/auth";
+import type { PosConnection, Staff } from "@/lib/types";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -151,7 +152,7 @@ export async function setReceiptLive(formData: FormData) {
 
   const { error: liveError } = await supabase
     .from("receipts")
-    .update({ is_latest: true })
+    .update({ is_latest: true, awaiting_items: false })
     .eq("merchant_id", merchant.id)
     .eq("tag_id", tagId)
     .eq("id", receiptId);
@@ -162,4 +163,131 @@ export async function setReceiptLive(formData: FormData) {
 
   revalidatePath("/dashboard");
   redirect(`/dashboard?tag=${tagId}`);
+}
+
+export async function addStaffMember(formData: FormData) {
+  const { supabase, merchant } = await getAuthedMerchant();
+  const name = String(formData.get("name") ?? "").trim();
+  const pinCode = String(formData.get("pin_code") ?? "").trim();
+
+  if (!name || !/^\d{4}$/.test(pinCode)) {
+    redirect("/dashboard/settings?error=Staff%20name%20and%204-digit%20PIN%20are%20required");
+  }
+
+  const { error } = await supabase.from("staff").insert({
+    merchant_id: merchant.id,
+    name,
+    pin_code: pinCode
+  });
+
+  if (error) {
+    redirect(`/dashboard/settings?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/dashboard/settings");
+  redirect("/dashboard/settings?saved=1");
+}
+
+export async function deleteStaffMember(formData: FormData) {
+  const { supabase, merchant } = await getAuthedMerchant();
+  const staffId = String(formData.get("staff_id") ?? "");
+
+  if (!staffId) {
+    redirect("/dashboard/settings?error=Staff%20member%20not%20found");
+  }
+
+  const { error } = await supabase
+    .from("staff")
+    .delete()
+    .eq("id", staffId)
+    .eq("merchant_id", merchant.id);
+
+  if (error) {
+    redirect(`/dashboard/settings?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/dashboard/settings");
+  redirect("/dashboard/settings?saved=1");
+}
+
+export async function connectSumUp() {
+  const { merchant } = await getAuthedMerchant();
+  const clientId = process.env.SUMUP_CLIENT_ID;
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
+  if (!clientId) {
+    redirect("/dashboard/settings?error=Missing%20SUMUP_CLIENT_ID");
+  }
+
+  const statePayload = Buffer.from(
+    JSON.stringify({
+      merchantId: merchant.id,
+      nonce: crypto.randomUUID()
+    })
+  ).toString("base64url");
+  const redirectUri = `${appUrl}/api/sumup/callback`;
+  const authUrl = new URL("https://api.sumup.com/authorize");
+  authUrl.searchParams.set("client_id", clientId);
+  authUrl.searchParams.set("response_type", "code");
+  authUrl.searchParams.set("scope", "payments user.app-settings transactions.history");
+  authUrl.searchParams.set("redirect_uri", redirectUri);
+  authUrl.searchParams.set("state", statePayload);
+
+  redirect(authUrl.toString());
+}
+
+export async function upsertSumUpConnection(input: {
+  merchantId: string;
+  accessToken: string;
+  refreshToken?: string | null;
+  externalMerchantId?: string | null;
+}) {
+  const { supabase, merchant } = await getAuthedMerchant();
+  if (merchant.id !== input.merchantId) {
+    throw new Error("Merchant mismatch");
+  }
+
+  const existing = await supabase
+    .from("pos_connections")
+    .select("*")
+    .eq("merchant_id", merchant.id)
+    .eq("provider", "sumup")
+    .maybeSingle<PosConnection>();
+
+  if (existing.data) {
+    const { error } = await supabase
+      .from("pos_connections")
+      .update({
+        access_token: input.accessToken,
+        refresh_token: input.refreshToken ?? null,
+        external_merchant_id: input.externalMerchantId ?? null
+      })
+      .eq("id", existing.data.id)
+      .eq("merchant_id", merchant.id);
+    if (error) throw error;
+    return;
+  }
+
+  const { error } = await supabase.from("pos_connections").insert({
+    merchant_id: merchant.id,
+    provider: "sumup",
+    access_token: input.accessToken,
+    refresh_token: input.refreshToken ?? null,
+    external_merchant_id: input.externalMerchantId ?? null
+  });
+  if (error) throw error;
+}
+
+export async function getMerchantStaffByPin(pinCode: string) {
+  const { supabase, merchant } = await getAuthedMerchant();
+  if (!/^\d{4}$/.test(pinCode)) return null;
+  const { data } = await supabase
+    .from("staff")
+    .select("*")
+    .eq("merchant_id", merchant.id)
+    .eq("pin_code", pinCode)
+    .maybeSingle<Staff>();
+  return data;
 }

@@ -2,7 +2,7 @@
 
 import { getAuthedMerchant } from "@/lib/auth";
 import { calculateReceiptTotals, roundMoney } from "@/lib/money";
-import type { PosOrderItem } from "@/lib/types";
+import type { PosOrderItem, Staff } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -11,6 +11,7 @@ type CompleteOrderInput = {
   items: PosOrderItem[];
   paymentMethod: "card" | "cash";
   status?: "open" | "completed";
+  staffPinCode?: string | null;
 };
 
 function normalizeOrderItems(items: PosOrderItem[]) {
@@ -39,6 +40,7 @@ export async function completePosOrder(input: CompleteOrderInput) {
   const { supabase, merchant } = await getAuthedMerchant();
   const items = normalizeOrderItems(input.items);
   const status = input.status ?? "completed";
+  const pinCode = String(input.staffPinCode ?? "").trim();
 
   if (!input.tagId) {
     throw new Error("Select a counter before completing the order.");
@@ -60,10 +62,27 @@ export async function completePosOrder(input: CompleteOrderInput) {
   }
 
   const totals = totalsForOrder(items);
+  let staffId: string | null = null;
+  if (pinCode) {
+    if (!/^\d{4}$/.test(pinCode)) {
+      throw new Error("Staff PIN must be 4 digits.");
+    }
+    const { data: staff } = await supabase
+      .from("staff")
+      .select("*")
+      .eq("merchant_id", merchant.id)
+      .eq("pin_code", pinCode)
+      .maybeSingle<Staff>();
+    if (!staff) {
+      throw new Error("Staff PIN not found.");
+    }
+    staffId = staff.id;
+  }
 
   const { error: orderError } = await supabase.from("orders").insert({
     merchant_id: merchant.id,
     tag_id: tag.id,
+    staff_id: staffId,
     items,
     subtotal: totals.subtotal,
     vat: totals.vat,
@@ -110,11 +129,13 @@ export async function completePosOrder(input: CompleteOrderInput) {
     .insert({
       merchant_id: merchant.id,
       tag_id: tag.id,
+      staff_id: staffId,
       items: receiptItems,
       subtotal: totals.subtotal,
       vat: totals.vat,
       total: totals.total,
       payment_method: input.paymentMethod === "card" ? "Card" : "Cash",
+      awaiting_items: false,
       is_latest: true
     })
     .select("id")

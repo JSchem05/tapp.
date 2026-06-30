@@ -7,6 +7,7 @@ import type {
   MenuItem,
   Modifier,
   ModifierGroup,
+  Staff,
   Tag
 } from "@/lib/types";
 import { getBaseUrl } from "@/lib/url";
@@ -31,7 +32,8 @@ export default async function PosPage() {
     { data: groups },
     { data: modifiers },
     { data: itemGroups },
-    { data: tags }
+    { data: tags },
+    { data: staff }
   ] = await Promise.all([
     supabase
       .from("categories")
@@ -58,7 +60,13 @@ export default async function PosPage() {
       .select("*")
       .eq("merchant_id", merchant.id)
       .order("created_at")
-      .returns<Tag[]>()
+      .returns<Tag[]>(),
+    supabase
+      .from("staff")
+      .select("*")
+      .eq("merchant_id", merchant.id)
+      .order("created_at")
+      .returns<Staff[]>()
   ]);
 
   const modifierMap = new Map<string, Modifier[]>();
@@ -185,6 +193,7 @@ export default async function PosPage() {
           categories={uniqueCategories}
           items={dedupedMenuItems}
           tags={tags ?? []}
+          staff={staff ?? []}
           baseUrl={getBaseUrl()}
         />
       </div>

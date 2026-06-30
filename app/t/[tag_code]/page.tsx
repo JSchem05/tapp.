@@ -101,6 +101,7 @@ export default async function PublicReceiptPage({
     .eq("merchant_id", tag.merchant_id)
     .eq("tag_id", tag.id)
     .eq("is_latest", true)
+    .eq("awaiting_items", false)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle<Receipt>();
@@ -139,6 +140,7 @@ export default async function PublicReceiptPage({
     .select("*")
     .eq("merchant_id", tag.merchant_id)
     .eq("tag_id", tag.id)
+    .eq("awaiting_items", false)
     .order("created_at", { ascending: false })
     .limit(10)
     .returns<Receipt[]>();
