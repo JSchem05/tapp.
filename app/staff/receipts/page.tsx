@@ -39,6 +39,7 @@ export default async function StaffReceiptsPage() {
   return (
     <StaffReceiptsList
       merchantName={merchant.name}
+      merchantProfile={merchant}
       receipts={receipts ?? []}
       tags={tags ?? []}
       staffById={staffById}

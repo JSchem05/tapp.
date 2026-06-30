@@ -43,6 +43,7 @@ export default async function ReceiptsPage() {
         ) : (
           <OwnerReceiptsTable
             merchantName={merchant.name}
+            merchantProfile={merchant}
             receipts={receipts ?? []}
             tags={tags ?? []}
             staffById={staffById}

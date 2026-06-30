@@ -2,13 +2,14 @@
 
 import { ReceiptDetailModal, type ReceiptDetailData } from "@/components/receipt-detail-modal";
 import { formatCurrency, formatDateTime } from "@/lib/money";
-import type { Receipt, Tag } from "@/lib/types";
+import type { Receipt, ReceiptMerchantProfile, Tag } from "@/lib/types";
 import { ReceiptText } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
 export function OwnerReceiptsTable({
   merchantName,
+  merchantProfile,
   receipts,
   tags,
   staffById,
@@ -16,6 +17,7 @@ export function OwnerReceiptsTable({
   sandboxRecipient = null
 }: {
   merchantName: string;
+  merchantProfile: Partial<ReceiptMerchantProfile>;
   receipts: Receipt[];
   tags: Tag[];
   staffById: Record<string, string>;
@@ -35,6 +37,7 @@ export function OwnerReceiptsTable({
     const tag = tagById.get(receipt.tag_id);
     setDetail({
       merchantName,
+      merchantProfile,
       receipt,
       tagLabel: tag?.label ?? "Counter",
       staffName: receipt.staff_id ? staffById[receipt.staff_id] ?? null : null,

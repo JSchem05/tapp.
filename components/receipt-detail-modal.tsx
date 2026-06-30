@@ -1,16 +1,23 @@
 "use client";
 
 import { CopyButton } from "@/components/copy-button";
+import {
+  LoyaltyCardSection,
+  PromoBannerSection,
+  ReviewPromptSection
+} from "@/components/receipt-engagement-sections";
 import { ReceiptCard } from "@/components/receipt-view";
 import { Input, Label } from "@/components/ui";
+import { getPromoConfig } from "@/lib/merchant-promo";
 import { formatDateTime } from "@/lib/money";
-import type { Receipt } from "@/lib/types";
+import type { Receipt, ReceiptMerchantProfile } from "@/lib/types";
 import { X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
 
 export type ReceiptDetailData = {
   merchantName: string;
+  merchantProfile?: Partial<ReceiptMerchantProfile> | null;
   receipt: Receipt;
   tagLabel: string;
   staffName: string | null;
@@ -32,9 +39,9 @@ export function ReceiptDetailModal({
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    setEmail("");
+    setEmail(sandboxRecipient ?? "");
     setSending(false);
-  }, [detail?.receipt.id]);
+  }, [detail?.receipt.id, sandboxRecipient]);
 
   useEffect(() => {
     if (!detail) return;
@@ -48,6 +55,8 @@ export function ReceiptDetailModal({
   if (!detail) return null;
 
   const receiptId = detail.receipt.id;
+  const profile = detail.merchantProfile ?? {};
+  const promo = getPromoConfig(profile);
 
   async function sendEmail() {
     const trimmed = email.trim();
@@ -125,6 +134,16 @@ export function ReceiptDetailModal({
           showHeader={false}
           className="border border-line shadow-none"
         />
+
+        <div className="mt-4 space-y-3">
+          {profile.show_review && profile.google_review_url ? (
+            <ReviewPromptSection profile={profile} />
+          ) : null}
+          {profile.show_loyalty ? <LoyaltyCardSection profile={profile} /> : null}
+          {promo.showPromo && promo.headline ? (
+            <PromoBannerSection profile={profile} />
+          ) : null}
+        </div>
 
         <div className="mt-5 rounded-[16px] border border-line bg-blueSoft p-4 text-center">
           <QRCodeSVG value={detail.receiptUrl} size={140} level="M" className="mx-auto" />

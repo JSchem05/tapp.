@@ -1,7 +1,7 @@
 import type { ReceiptMerchantProfile } from "@/lib/types";
 
 export function getPromoConfig(profile: Partial<ReceiptMerchantProfile>) {
-  const showPromo = profile.show_promo ?? profile.show_ad ?? false;
+  const showPromo = Boolean(profile.show_promo || profile.show_ad);
   const headline = profile.promo_headline ?? profile.ad_headline ?? null;
   const subtext = profile.promo_subtext ?? profile.ad_subtext ?? null;
   const ctaLabel = profile.promo_cta_label ?? profile.ad_cta_label ?? null;
