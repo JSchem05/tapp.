@@ -35,7 +35,7 @@ export function DashboardSidebar({
       .join("") || "T";
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-[200px] flex-col bg-[#111111] px-4 py-6 text-white">
+    <aside className="fixed left-0 top-0 z-40 flex h-screen w-[200px] flex-col bg-ink px-4 py-6 text-white">
       <Link href="/dashboard" className="block">
         <p className="text-[18px] font-extrabold leading-none">Tapp.</p>
         <p className="mt-2 truncate text-xs text-white/50">{merchantName}</p>

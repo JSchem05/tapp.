@@ -1,42 +1,52 @@
+"use client";
+
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from "recharts";
+
 export function RevenueChart({
   data
 }: {
   data: { month: string; revenue: number }[];
 }) {
-  const max = Math.max(...data.map((item) => item.revenue), 1);
-  const ticks = [10000, 8000, 5000, 3000, 0];
-
   return (
-    <div className="grid h-[230px] grid-cols-[44px_1fr] gap-4">
-      <div className="flex h-[190px] flex-col justify-between pt-2 text-right text-xs font-medium text-muted">
-        {ticks.map((tick) => (
-          <span key={tick}>{tick === 0 ? "0K" : `${Math.round(tick / 1000)}K`}</span>
-        ))}
-      </div>
-      <div className="grid grid-rows-[190px_1fr]">
-        <div className="flex items-end justify-around gap-5 border-b border-line px-4">
-          {data.map((item, index) => {
-            const height = Math.max(18, (item.revenue / max) * 150);
-            return (
-              <div
-                key={item.month}
-                className={`w-12 rounded-t-[12px] rounded-b-[6px] ${
-                  index === 2 ? "bg-[#8F8F8F]" : "bg-[#333333]"
-                }`}
-                style={{ height }}
-                title={`${item.month}: ${item.revenue}`}
-              />
-            );
-          })}
-        </div>
-        <div className="flex justify-around gap-5 px-4 pt-3 text-sm font-medium text-muted">
-          {data.map((item) => (
-            <span key={item.month} className="w-12 text-center">
-              {item.month}
-            </span>
-          ))}
-        </div>
-      </div>
+    <div className="h-[260px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
+          <CartesianGrid stroke="#E5E7EB" vertical={false} />
+          <XAxis
+            dataKey="month"
+            axisLine={false}
+            tickLine={false}
+            tick={{ fill: "#6B7280", fontSize: 12, fontWeight: 600 }}
+            dy={8}
+          />
+          <YAxis
+            axisLine={false}
+            tickLine={false}
+            tick={{ fill: "#6B7280", fontSize: 12, fontWeight: 600 }}
+            tickFormatter={(value) =>
+              value === 0 ? "0" : `${Math.round(Number(value) / 1000)}K`
+            }
+          />
+          <Tooltip
+            cursor={{ fill: "rgba(15, 23, 41, 0.04)" }}
+            contentStyle={{
+              border: "1px solid #E5E7EB",
+              borderRadius: 12,
+              boxShadow: "var(--shadow)"
+            }}
+            formatter={(value) => [`€${Number(value).toFixed(2)}`, "Revenue"]}
+          />
+          <Bar dataKey="revenue" fill="#333333" radius={[10, 10, 4, 4]} />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
