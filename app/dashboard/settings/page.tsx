@@ -1,13 +1,13 @@
 import {
   addStaffMember,
   connectSumUp,
-  deleteStaffMember,
   updateMerchantSettings
 } from "@/app/dashboard/actions";
-import { CopyButton } from "@/components/copy-button";
 import { LogoUploadField } from "@/components/logo-upload-field";
+import { StaffList } from "@/components/staff-list";
 import { Card, Input, Label } from "@/components/ui";
 import { getOwnerContext } from "@/lib/merchant-context";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { PosConnection, Staff, Tag } from "@/lib/types";
 import { getBaseUrl } from "@/lib/url";
 import {
@@ -31,13 +31,14 @@ export default async function SettingsPage({
   searchParams?: { saved?: string; error?: string };
 }) {
   const { supabase, merchant } = await getOwnerContext();
+  const admin = createAdminClient();
   const { data: tags } = await supabase
     .from("tags")
     .select("*")
     .eq("merchant_id", merchant.id)
     .order("created_at", { ascending: true })
     .returns<Tag[]>();
-  const { data: staff } = await supabase
+  const { data: staff } = await admin
     .from("staff")
     .select("id, name, code, merchant_id, created_at")
     .eq("merchant_id", merchant.id)
@@ -210,41 +211,8 @@ export default async function SettingsPage({
             Add staff
           </button>
         </form>
-        <div className="mt-4 space-y-2">
-          {(staff ?? []).map((member) => (
-            <div
-              key={member.id}
-              className="flex flex-col gap-3 rounded-[12px] border border-line bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-ink">
-                  {member.name}
-                  <span className="px-1.5 text-muted">·</span>
-                  <span className="font-mono text-base font-extrabold tracking-[0.2em] text-ink">
-                    {member.code || "—"}
-                  </span>
-                </p>
-                <p className="mt-1 text-xs text-muted">
-                  Staff sign in at <span className="font-semibold text-ink">/device</span> with
-                  this code
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                {member.code ? (
-                  <CopyButton value={member.code} label={`Copy ${member.code}`} />
-                ) : null}
-                <form action={deleteStaffMember}>
-                  <input type="hidden" name="staff_id" value={member.id} />
-                  <button className="rounded-[8px] border border-line px-3 py-1.5 text-xs font-semibold text-ink hover:bg-[#FAFAFA]">
-                    Remove
-                  </button>
-                </form>
-              </div>
-            </div>
-          ))}
-          {(staff ?? []).length === 0 ? (
-            <p className="text-sm text-muted">No staff added yet.</p>
-          ) : null}
+        <div className="mt-4">
+          <StaffList staff={staff ?? []} />
         </div>
       </Card>
 

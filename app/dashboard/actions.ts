@@ -4,7 +4,7 @@ import { clearStaffDeviceSession } from "@/lib/device-session";
 import { generateStaffCode } from "@/lib/device-codes";
 import { getOwnerContext } from "@/lib/merchant-context";
 import { createClient } from "@/lib/supabase/server";
-import type { PosConnection } from "@/lib/types";
+import type { PosConnection, Staff } from "@/lib/types";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -179,14 +179,22 @@ export async function addStaffMember(formData: FormData) {
 
   const code = await nextUniqueStaffPersonalCode(supabase);
 
-  const { error } = await supabase.from("staff").insert({
-    merchant_id: merchant.id,
-    name,
-    code
-  });
+  const { data: created, error } = await supabase
+    .from("staff")
+    .insert({
+      merchant_id: merchant.id,
+      name,
+      code
+    })
+    .select("id, name, code")
+    .single<Pick<Staff, "id" | "name" | "code">>();
 
-  if (error) {
-    redirect(`/dashboard/settings?error=${encodeURIComponent(error.message)}`);
+  if (error || !created?.code) {
+    redirect(
+      `/dashboard/settings?error=${encodeURIComponent(
+        error?.message ?? "Staff code was not saved. Run pnpm run db:migrate and try again."
+      )}`
+    );
   }
 
   revalidatePath("/dashboard/settings");
