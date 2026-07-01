@@ -15,7 +15,7 @@ export function PosScreen({
   mode: "owner" | "staff";
   staffName?: string;
 }) {
-  const { categories, items, tags } = data;
+  const { categories, items, tags, staff, popularItemIds } = data;
 
   if (!categories.length || !items.length) {
     return (
@@ -53,6 +53,8 @@ export function PosScreen({
         categories={categories}
         items={items}
         tags={tags}
+        staff={staff}
+        popularItemIds={popularItemIds}
         baseUrl={getBaseUrl()}
         embedded
       />
@@ -105,6 +107,8 @@ export function PosScreen({
           categories={categories}
           items={items}
           tags={tags}
+          staff={staff}
+          popularItemIds={popularItemIds}
           baseUrl={getBaseUrl()}
         />
       </div>

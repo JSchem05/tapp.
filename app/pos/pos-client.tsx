@@ -9,24 +9,34 @@ import type {
   Category,
   PosModifierSelection,
   PosOrderItem,
+  Staff,
   Tag
 } from "@/lib/types";
 import { AppModal, AppModalBody, AppModalFooter, AppModalHeader } from "@/components/app-modal";
 import {
-  ChevronDown,
-  ChevronRight,
+  Banknote,
   Check,
-  Maximize2,
+  Coffee,
+  Cookie,
+  CreditCard,
+  Croissant,
+  GlassWater,
   Minus,
   Pencil,
   Plus,
   ReceiptText,
+  Salad,
   Search,
   Trash2,
+  UtensilsCrossed,
+  Wine,
   X
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useMemo, useState, useTransition } from "react";
+
+const PASTEL_PALETTE = ["#E8F0FE", "#E6F7EF", "#FEF3E2", "#F0EBFC", "#FDEDF3"] as const;
 
 type ModalState = {
   item: PosMenuItem;
@@ -42,11 +52,11 @@ type PaymentState = {
 };
 
 export function PosClient({
-  merchantName,
-  staffName,
   categories,
   items,
   tags,
+  staff,
+  popularItemIds,
   baseUrl,
   embedded = false
 }: {
@@ -55,14 +65,17 @@ export function PosClient({
   categories: Category[];
   items: PosMenuItem[];
   tags: Tag[];
+  staff: Staff[];
+  popularItemIds: string[];
   baseUrl: string;
   embedded?: boolean;
 }) {
   const [activeCategory, setActiveCategory] = useState(categories[0]?.id ?? "");
   const [query, setQuery] = useState("");
   const [orderItems, setOrderItems] = useState<PosOrderItem[]>([]);
+  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [selectedTagId, setSelectedTagId] = useState(tags[0]?.id ?? "");
-  const [serviceMode, setServiceMode] = useState<"dine-in" | "takeaway">("dine-in");
+  const [counterEditOpen, setCounterEditOpen] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [payment, setPayment] = useState<PaymentState>({
@@ -72,6 +85,7 @@ export function PosClient({
   const [successUrl, setSuccessUrl] = useState("");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
+
   const orderQtyByItem = useMemo(() => {
     const map = new Map<string, number>();
     for (const item of orderItems) {
@@ -79,6 +93,7 @@ export function PosClient({
     }
     return map;
   }, [orderItems]);
+
   const categoryCounts = useMemo(() => {
     const map = new Map<string, number>();
     for (const item of items) {
@@ -86,16 +101,36 @@ export function PosClient({
     }
     return map;
   }, [items]);
+
   const itemById = useMemo(
     () => new Map(items.map((item) => [item.id, item])),
     [items]
   );
 
-  const filteredItems = items.filter((item) => {
-    const categoryMatch = activeCategory ? item.category_id === activeCategory : true;
-    const searchMatch = item.name.toLowerCase().includes(query.toLowerCase());
-    return categoryMatch && searchMatch;
-  });
+  const searchActive = query.trim().length > 0;
+
+  const filteredItems = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return items.filter((item) => {
+      const searchMatch = normalizedQuery
+        ? item.name.toLowerCase().includes(normalizedQuery)
+        : true;
+      const categoryMatch = searchActive
+        ? true
+        : activeCategory
+          ? item.category_id === activeCategory
+          : true;
+      return searchMatch && categoryMatch;
+    });
+  }, [activeCategory, items, query, searchActive]);
+
+  const popularItems = useMemo(
+    () =>
+      popularItemIds
+        .map((id) => itemById.get(id))
+        .filter((item): item is PosMenuItem => Boolean(item)),
+    [itemById, popularItemIds]
+  );
 
   const totals = useMemo(() => {
     const subtotal = roundMoney(
@@ -151,6 +186,40 @@ export function PosClient({
         comment: ""
       })
     );
+  }
+
+  function handleItemCardTap(item: PosMenuItem) {
+    if (!item.is_available) return;
+    if (item.modifierGroups.length > 0) {
+      openItem(item);
+      return;
+    }
+    addSimpleItem(item);
+  }
+
+  function incrementItemQty(item: PosMenuItem) {
+    if (!item.is_available) return;
+    addSimpleItem(item);
+  }
+
+  function decrementItemQty(item: PosMenuItem) {
+    const qty = orderQtyByItem.get(item.id) ?? 0;
+    if (qty <= 0) return;
+    setOrderItems((current) => {
+      let remaining = 1;
+      return current
+        .map((orderItem) => {
+          if (orderItem.item_id !== item.id || remaining === 0) return orderItem;
+          if (orderItem.qty <= remaining) {
+            remaining -= orderItem.qty;
+            return { ...orderItem, qty: 0 };
+          }
+          const nextQty = orderItem.qty - remaining;
+          remaining = 0;
+          return { ...orderItem, qty: nextQty };
+        })
+        .filter((orderItem) => orderItem.qty > 0);
+    });
   }
 
   function openOrderItem(orderItem: PosOrderItem, index: number) {
@@ -210,16 +279,6 @@ export function PosClient({
     setModal(null);
   }
 
-  function updateQty(index: number, delta: number) {
-    setOrderItems((current) =>
-      current
-        .map((item, itemIndex) =>
-          itemIndex === index ? { ...item, qty: Math.max(0, item.qty + delta) } : item
-        )
-        .filter((item) => item.qty > 0)
-    );
-  }
-
   function removeItem(index: number) {
     setOrderItems((current) => current.filter((_, itemIndex) => itemIndex !== index));
   }
@@ -231,12 +290,17 @@ export function PosClient({
     setError("");
   }
 
+  function toggleStaffSelection(staffId: string) {
+    setSelectedStaffId((current) => (current === staffId ? null : staffId));
+  }
+
   function submitOrder(status: "open" | "completed") {
     setError("");
     startTransition(async () => {
       try {
         const result = await completePosOrder({
           tagId: selectedTagId,
+          staffId: selectedStaffId,
           items: orderItems,
           paymentMethod: payment.method,
           status
@@ -262,14 +326,15 @@ export function PosClient({
       }`}
     >
       <section className="flex min-h-0 flex-col overflow-y-auto bg-cream">
-        <div className="flex items-center justify-between gap-4 px-6 pb-3 pt-4">
-          <div className="min-w-0">
-            <h1 className="truncate text-lg font-semibold text-ink">
-              {staffName ?? merchantName}
-            </h1>
-          </div>
-          <div className="flex h-10 w-[280px] shrink-0 items-center rounded-[10px] border border-line bg-white px-3 focus-within:border-ink focus-within:ring-4 focus-within:ring-ink/10">
-            <Search className="h-4 w-4 text-muted" />
+        <StaffAvatarRow
+          staff={staff}
+          selectedStaffId={selectedStaffId}
+          onSelect={toggleStaffSelection}
+        />
+
+        <div className="px-6 py-3">
+          <div className="flex h-11 w-full items-center rounded-[10px] border border-line bg-white px-3 focus-within:border-blue focus-within:ring-4 focus-within:ring-blue/10">
+            <Search className="h-4 w-4 shrink-0 text-muted" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -279,118 +344,109 @@ export function PosClient({
           </div>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto px-6 pb-4">
-          {categories.map((category) => {
-            const active = activeCategory === category.id;
+        <div className="grid grid-cols-4 gap-3 px-6 pb-4">
+          {categories.map((category, index) => {
+            const active = !searchActive && activeCategory === category.id;
+            const pastel = PASTEL_PALETTE[index % PASTEL_PALETTE.length];
+            const Icon = categoryIcon(category.name);
             return (
               <button
                 key={category.id}
                 type="button"
-                onClick={() => setActiveCategory(category.id)}
-                className={`flex h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-sm font-semibold ${
-                  active
-                    ? "border-ink bg-ink text-white"
-                    : "border-line bg-white text-ink hover:bg-[#FAFAFA]"
+                onClick={() => {
+                  setActiveCategory(category.id);
+                  setQuery("");
+                }}
+                className={`flex h-[100px] flex-col rounded-[16px] p-5 text-left transition ${
+                  active ? "border-2 border-blue" : "border-2 border-transparent"
                 }`}
+                style={{ backgroundColor: pastel }}
               >
-                <span>{category.name}</span>
-                <span
-                  className={`rounded-full px-1.5 py-0.5 text-[11px] ${
-                    active ? "bg-white/20 text-white" : "bg-[#F0F0F0] text-muted"
-                  }`}
-                >
-                  {categoryCounts.get(category.id) ?? 0}
-                </span>
+                <Icon className="h-5 w-5 text-ink/70" />
+                <p className="mt-auto truncate text-[15px] font-semibold text-ink">
+                  {category.name}
+                </p>
+                <p className="text-xs text-muted">
+                  {categoryCounts.get(category.id) ?? 0} items
+                </p>
               </button>
             );
           })}
         </div>
 
-        <div className="grid grid-cols-3 gap-3 px-6 pb-6 xl:grid-cols-4">
+        {popularItems.length > 0 ? (
+          <div className="shrink-0">
+            <p className="px-6 pb-2 text-sm font-semibold text-ink">Popular</p>
+            <div className="grid grid-cols-4 gap-3 px-6 pb-4">
+              {popularItems.map((item) => (
+                <PosItemCard
+                  key={`popular-${item.id}`}
+                  item={item}
+                  qty={orderQtyByItem.get(item.id) ?? 0}
+                  onCardTap={() => handleItemCardTap(item)}
+                  onIncrement={() => incrementItemQty(item)}
+                  onDecrement={() => decrementItemQty(item)}
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="grid grid-cols-4 gap-3 px-6 pb-6">
           {filteredItems.map((item) => (
-            <article
+            <PosItemCard
               key={item.id}
-              className={`relative h-[220px] overflow-hidden rounded-[12px] border border-line bg-white text-left shadow-soft transition hover:shadow-lift ${
-                !item.is_available ? "opacity-45" : ""
-              }`}
-            >
-              <button
-                type="button"
-                onClick={() => addSimpleItem(item)}
-                className="block h-full w-full text-left"
-              >
-                <div className="relative h-[143px] bg-[#F5F5F5]">
-                  <ItemImage item={item} />
-                  <span className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-lg bg-white text-muted shadow-sm">
-                    <Maximize2 className="h-3.5 w-3.5" />
-                  </span>
-                  {orderQtyByItem.get(item.id) ? (
-                    <span className="absolute left-2 top-2 flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-ink px-1.5 text-xs font-bold text-white">
-                      {orderQtyByItem.get(item.id)}
-                    </span>
-                  ) : null}
-                </div>
-                <div className="min-h-[77px] p-3 pr-14">
-                  <p className="truncate text-sm font-semibold text-ink">{item.name}</p>
-                  <p className="mt-1 text-[13px] font-semibold text-blue">
-                    {formatCurrency(Number(item.price))}
-                  </p>
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  openItem(item);
-                }}
-                className="absolute right-3 top-[125px] flex h-9 w-9 items-center justify-center rounded-full bg-blue text-white shadow-soft"
-                aria-label={`Customize ${item.name}`}
-              >
-                <Plus className="h-5 w-5" />
-              </button>
-              {!item.is_available ? (
-                <span className="absolute inset-0 flex items-center justify-center bg-white/70 text-sm font-extrabold text-muted">
-                  Unavailable
-                </span>
-              ) : null}
-            </article>
+              item={item}
+              qty={orderQtyByItem.get(item.id) ?? 0}
+              onCardTap={() => handleItemCardTap(item)}
+              onIncrement={() => incrementItemQty(item)}
+              onDecrement={() => decrementItemQty(item)}
+            />
           ))}
         </div>
       </section>
 
       <aside className="flex h-full min-h-0 w-[400px] flex-col border-l border-line bg-white">
-        <div className="flex items-center justify-between gap-3 px-5 pt-5">
-          <p className="text-[13px] font-bold uppercase tracking-wide text-muted">
-            Order Details
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-5 py-4">
+          <p className="truncate text-sm font-semibold text-ink">
+            {selectedTag?.label ?? "Order"}
           </p>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="relative shrink-0">
             <button
               type="button"
-              onClick={resetOrder}
-              className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-line bg-white px-2.5 text-xs font-bold text-ink hover:bg-[#FAFAFA]"
+              onClick={() => setCounterEditOpen((open) => !open)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-muted hover:text-ink"
+              aria-label="Change counter"
             >
-              <Trash2 className="h-3.5 w-3.5" />
-              Reset Order
+              <Pencil className="h-3.5 w-3.5" />
             </button>
-            <label className="relative">
-              <select
-                value={serviceMode}
-                onChange={(event) =>
-                  setServiceMode(event.target.value as "dine-in" | "takeaway")
-                }
-                className="h-8 appearance-none rounded-[10px] border border-line bg-white py-0 pl-3 pr-7 text-xs font-bold text-ink"
-              >
-                <option value="dine-in">Dine In</option>
-                <option value="takeaway">Takeaway</option>
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
-            </label>
+            {counterEditOpen ? (
+              <div className="absolute right-0 top-10 z-10 w-48 rounded-[10px] border border-line bg-white p-2 shadow-soft">
+                {tags.map((tag) => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedTagId(tag.id);
+                      setCounterEditOpen(false);
+                    }}
+                    className={`flex w-full rounded-[8px] px-3 py-2 text-left text-sm font-semibold ${
+                      selectedTagId === tag.id
+                        ? "bg-blueSoft text-blue"
+                        : "text-ink hover:bg-[#FAFAFA]"
+                    }`}
+                  >
+                    {tag.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5">
           {orderItems.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-center">
+            <div className="flex h-full items-center justify-center py-8 text-center">
               <div>
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blueSoft text-blue">
                   <ReceiptText className="h-5 w-5" />
@@ -400,76 +456,52 @@ export function PosClient({
               </div>
             </div>
           ) : (
-            <div className="divide-y divide-[#F3F4F6]">
+            <div>
               {orderItems.map((item, index) => {
-                const source = itemById.get(item.item_id);
                 const lineTotal =
                   (item.price +
                     item.modifiers.reduce((sum, modifier) => sum + modifier.price_delta, 0)) *
                   item.qty;
                 return (
-                  <div key={`${item.item_id}-${index}`} className="py-3">
-                    <div className="grid grid-cols-[44px_1fr_auto] gap-3">
-                      <OrderThumb item={source} name={item.name} />
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-ink">{item.name}</p>
-                        {item.modifiers.length > 0 ? (
-                          <p className="mt-0.5 truncate text-xs text-muted">
-                            {item.modifiers.map((modifier) => modifier.name).join(", ")}
-                          </p>
-                        ) : (
-                          <p className="mt-0.5 text-xs text-muted">No modifiers</p>
-                        )}
-                        {item.comment ? (
-                          <p className="mt-0.5 truncate text-xs italic text-muted">
-                            {item.comment}
-                          </p>
-                        ) : null}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeItem(index)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-600"
-                        aria-label={`Remove ${item.name}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <div className="mt-2 grid grid-cols-[44px_1fr_auto] items-center gap-3">
-                      <div />
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openOrderItem(item, index)}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-white text-muted hover:text-ink"
-                          aria-label={`Edit ${item.name}`}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <div className="flex h-8 items-center rounded-lg border border-line">
-                          <button
-                            type="button"
-                            onClick={() => updateQty(index, -1)}
-                            className="flex h-full w-8 items-center justify-center text-muted hover:text-ink"
-                            aria-label={`Decrease ${item.name}`}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </button>
-                          <span className="w-8 text-center text-sm font-bold">{item.qty}</span>
-                          <button
-                            type="button"
-                            onClick={() => updateQty(index, 1)}
-                            className="flex h-full w-8 items-center justify-center text-muted hover:text-ink"
-                            aria-label={`Increase ${item.name}`}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                      <p className="text-right text-sm font-bold text-ink">
-                        {formatCurrency(lineTotal)}
+                  <div
+                    key={`${item.item_id}-${index}`}
+                    className="flex items-center gap-3 border-b border-[#F3F4F6] py-2.5"
+                  >
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F3F4F6] text-xs font-bold text-ink">
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-ink">
+                        {item.name} x{item.qty}
                       </p>
+                      {item.modifiers.length > 0 ? (
+                        <p className="truncate text-xs text-muted">
+                          {item.modifiers.map((modifier) => modifier.name).join(", ")}
+                        </p>
+                      ) : null}
+                      {item.comment ? (
+                        <p className="truncate text-xs italic text-muted">{item.comment}</p>
+                      ) : null}
                     </div>
+                    <p className="shrink-0 text-sm font-bold text-ink">
+                      {formatCurrency(lineTotal)}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => openOrderItem(item, index)}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted hover:text-ink"
+                      aria-label={`Edit ${item.name}`}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeItem(index)}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted hover:text-red-600"
+                      aria-label={`Remove ${item.name}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 );
               })}
@@ -477,62 +509,65 @@ export function PosClient({
           )}
         </div>
 
-        <div className="border-t border-line px-5 py-4">
-          <TotalRow label="Sub Total" value={formatCurrency(totals.subtotal)} />
-          <TotalRow label="Discount" value="-" />
-          <TotalRow label="Tax 18%" value={formatCurrency(totals.vat)} />
-          <div className="mt-3 border-t border-line pt-3">
-            <div className="flex items-center justify-between">
-              <span className="text-[15px] font-semibold text-ink">Total Payment</span>
-              <span className="text-[22px] font-bold text-ink">
-                {formatCurrency(totals.total)}
-              </span>
-            </div>
+        <div className="shrink-0 border-t border-line px-5 py-4">
+          <TotalRow label="Subtotal" value={formatCurrency(totals.subtotal)} />
+          <TotalRow label="VAT 18%" value={formatCurrency(totals.vat)} />
+          <div className="my-3 border-t border-line" />
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-ink">Total</span>
+            <span className="text-[22px] font-bold text-ink">
+              {formatCurrency(totals.total)}
+            </span>
           </div>
-          <button
-            type="button"
-            className="mt-3 flex h-10 w-full items-center justify-between rounded-[10px] text-sm font-semibold text-ink"
-          >
-            <span>Add Discount</span>
-            <ChevronRight className="h-4 w-4 text-muted" />
-          </button>
-          <label className="mt-2 block">
-            <span className="sr-only">Select Counter</span>
-            <select
-              value={selectedTagId}
-              onChange={(event) => setSelectedTagId(event.target.value)}
-              className="h-11 w-full rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink"
-            >
-              {tags.map((tag) => (
-                <option key={tag.id} value={tag.id}>
-                  {tag.label} ({tag.tag_code})
-                </option>
-              ))}
-            </select>
-          </label>
+
+          <div className="my-4 grid grid-cols-2 gap-2">
+            {(
+              [
+                { method: "cash" as const, label: "Cash", Icon: Banknote },
+                { method: "card" as const, label: "Card", Icon: CreditCard }
+              ] as const
+            ).map(({ method, label, Icon }) => {
+              const selected = payment.method === method;
+              return (
+                <button
+                  key={method}
+                  type="button"
+                  onClick={() => setPayment({ ...payment, method })}
+                  className={`rounded-[10px] border px-3 py-3 text-center transition ${
+                    selected
+                      ? "border-2 border-blue bg-blueSoft"
+                      : "border border-line bg-white"
+                  }`}
+                >
+                  <Icon className="mx-auto h-5 w-5 text-ink" />
+                  <p className="mt-1 text-[13px] font-semibold text-ink">{label}</p>
+                </button>
+              );
+            })}
+          </div>
+
           {error ? (
-            <p className="mt-3 rounded-[10px] bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
+            <p className="mb-3 rounded-[10px] bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
               {error}
             </p>
           ) : null}
-          <div className="mt-4 grid grid-cols-[38fr_62fr] gap-2">
-            <button
-              type="button"
-              disabled={orderItems.length === 0 || isPending}
-              onClick={() => submitOrder("open")}
-              className="h-12 rounded-[10px] border border-line bg-white text-sm font-bold text-ink disabled:opacity-40"
-            >
-              Open Bill
-            </button>
-            <button
-              type="button"
-              disabled={orderItems.length === 0 || isPending}
-              onClick={() => setPaymentOpen(true)}
-              className="h-12 rounded-[10px] bg-blue text-sm font-bold text-white transition hover:bg-blueDark disabled:opacity-40"
-            >
-              Pay Now
-            </button>
-          </div>
+
+          <button
+            type="button"
+            disabled={orderItems.length === 0 || isPending}
+            onClick={() => submitOrder("open")}
+            className="mb-2 h-10 w-full rounded-[10px] border border-line bg-white text-sm font-bold text-ink disabled:opacity-40"
+          >
+            Open Bill
+          </button>
+          <button
+            type="button"
+            disabled={orderItems.length === 0 || isPending}
+            onClick={() => setPaymentOpen(true)}
+            className="h-[52px] w-full rounded-[10px] bg-ink text-sm font-bold text-white transition hover:bg-inkSoft disabled:opacity-40"
+          >
+            Place Order
+          </button>
         </div>
       </aside>
 
@@ -578,22 +613,122 @@ export function PosClient({
   );
 }
 
-function ItemImage({ item }: { item: PosMenuItem }) {
-  if (item.image_url) {
-    return (
-      <img
-        src={item.image_url}
-        alt={item.name}
-        className="h-full w-full object-cover"
-      />
-    );
-  }
+function StaffAvatarRow({
+  staff,
+  selectedStaffId,
+  onSelect
+}: {
+  staff: Staff[];
+  selectedStaffId: string | null;
+  onSelect: (staffId: string) => void;
+}) {
+  if (staff.length === 0) return null;
 
   return (
-    <div className="flex h-full w-full items-center justify-center bg-[#F5F5F5] text-[32px] font-bold text-muted">
-      {item.name[0]?.toUpperCase()}
+    <div className="flex shrink-0 items-center gap-3 border-b border-line px-6 py-3">
+      {staff.map((member, index) => {
+        const selected = selectedStaffId === member.id;
+        const pastel = PASTEL_PALETTE[index % PASTEL_PALETTE.length];
+        return (
+          <button
+            key={member.id}
+            type="button"
+            onClick={() => onSelect(member.id)}
+            className="flex shrink-0 flex-col items-center gap-1"
+          >
+            <span
+              className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-ink ${
+                selected ? "ring-2 ring-blue ring-offset-2" : ""
+              }`}
+              style={{ backgroundColor: pastel }}
+            >
+              {member.name.trim()[0]?.toUpperCase() ?? "?"}
+            </span>
+            <span className="max-w-[72px] truncate text-xs font-semibold text-ink">
+              {formatStaffShortName(member.name)}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
+}
+
+function PosItemCard({
+  item,
+  qty,
+  onCardTap,
+  onIncrement,
+  onDecrement
+}: {
+  item: PosMenuItem;
+  qty: number;
+  onCardTap: () => void;
+  onIncrement: () => void;
+  onDecrement: () => void;
+}) {
+  return (
+    <article
+      className={`flex flex-col rounded-[12px] border border-line bg-white p-3.5 ${
+        !item.is_available ? "opacity-45" : ""
+      }`}
+    >
+      <button type="button" onClick={onCardTap} className="w-full text-left">
+        <p className="truncate text-sm font-semibold text-ink">{item.name}</p>
+        <p className="mt-1 text-[13px] font-semibold text-blue">
+          {formatCurrency(Number(item.price))}
+        </p>
+      </button>
+      <div className="mt-3 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onDecrement();
+          }}
+          disabled={qty === 0 || !item.is_available}
+          className="flex h-7 w-7 items-center justify-center rounded-full border border-line text-muted disabled:opacity-30"
+          aria-label={`Decrease ${item.name}`}
+        >
+          <Minus className="h-3.5 w-3.5" />
+        </button>
+        <span className="text-sm font-bold text-ink">{qty}</span>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onIncrement();
+          }}
+          disabled={!item.is_available}
+          className="flex h-7 w-7 items-center justify-center rounded-full border border-line text-muted hover:text-ink disabled:opacity-30"
+          aria-label={`Increase ${item.name}`}
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      {!item.is_available ? (
+        <p className="mt-2 text-center text-xs font-bold text-muted">Unavailable</p>
+      ) : null}
+    </article>
+  );
+}
+
+function formatStaffShortName(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "Staff";
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+}
+
+function categoryIcon(name: string): LucideIcon {
+  const normalized = name.trim().toLowerCase();
+  if (normalized.includes("coffee") || normalized.includes("drink")) return Coffee;
+  if (normalized.includes("pastry") || normalized.includes("bake")) return Croissant;
+  if (normalized.includes("snack")) return Cookie;
+  if (normalized.includes("salad") || normalized.includes("food")) return Salad;
+  if (normalized.includes("wine") || normalized.includes("bar")) return Wine;
+  if (normalized.includes("water") || normalized.includes("juice")) return GlassWater;
+  return UtensilsCrossed;
 }
 
 function addOrMergeOrderItem(
@@ -635,24 +770,6 @@ function modifierSignature(modifiers: PosModifierSelection[]) {
     .join("|");
 }
 
-function OrderThumb({ item, name }: { item?: PosMenuItem; name: string }) {
-  if (item?.image_url) {
-    return (
-      <img
-        src={item.image_url}
-        alt=""
-        className="h-11 w-11 rounded-[10px] object-cover"
-      />
-    );
-  }
-
-  return (
-    <div className="flex h-11 w-11 items-center justify-center rounded-[10px] bg-[#F5F5F5] text-sm font-bold text-muted">
-      {name[0]?.toUpperCase()}
-    </div>
-  );
-}
-
 function ItemImageThumb({ item }: { item: PosMenuItem }) {
   if (item.image_url) {
     return (
@@ -675,7 +792,7 @@ function TotalRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between py-1 text-sm">
       <span className="text-muted">{label}</span>
-      <span className="font-extrabold text-ink">{value}</span>
+      <span className="font-semibold text-ink">{value}</span>
     </div>
   );
 }
@@ -902,7 +1019,7 @@ function PaymentModal({
               onClick={() => setPayment({ ...payment, method })}
               className={`h-20 rounded-[20px] border text-xl font-extrabold ${
                 payment.method === method
-                  ? "border-ink bg-[#F0F0F0] text-ink"
+                  ? "border-blue bg-blueSoft text-ink"
                   : "border-line bg-white text-ink"
               }`}
             >

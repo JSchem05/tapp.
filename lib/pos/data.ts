@@ -22,7 +22,71 @@ export type PosData = {
   items: PosMenuItem[];
   tags: Tag[];
   staff: Staff[];
+  popularItemIds: string[];
 };
+
+function countItemFrequency(
+  rows: Array<{ items: Array<{ item_id?: string; name?: string; qty?: number }> }>,
+  nameToId: Map<string, string>
+) {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    for (const item of row.items ?? []) {
+      const id =
+        item.item_id ??
+        (item.name ? nameToId.get(item.name.trim().toLowerCase()) : undefined);
+      if (!id) continue;
+      counts.set(id, (counts.get(id) ?? 0) + (Number(item.qty) || 1));
+    }
+  }
+  return counts;
+}
+
+async function loadPopularItemIds(
+  supabase: SupabaseClient,
+  merchantId: string,
+  menuItems: PosMenuItem[]
+): Promise<string[]> {
+  const nameToId = new Map(
+    menuItems.map((item) => [item.name.trim().toLowerCase(), item.id])
+  );
+
+  const [{ data: orders }, { data: receipts }] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("items")
+      .eq("merchant_id", merchantId)
+      .order("created_at", { ascending: false })
+      .limit(500),
+    supabase
+      .from("receipts")
+      .select("items")
+      .eq("merchant_id", merchantId)
+      .order("created_at", { ascending: false })
+      .limit(500)
+  ]);
+
+  const counts = countItemFrequency(
+    [...(orders ?? []), ...(receipts ?? [])],
+    nameToId
+  );
+
+  const ranked = Array.from(counts.entries())
+    .sort((first, second) => second[1] - first[1])
+    .map(([id]) => id)
+    .filter((id) => menuItems.some((item) => item.id === id));
+
+  if (ranked.length >= 4) {
+    return ranked.slice(0, 4);
+  }
+
+  const fallback = menuItems
+    .filter((item) => item.is_available && !ranked.includes(item.id))
+    .sort((first, second) => first.sort_order - second.sort_order)
+    .map((item) => item.id);
+
+  return [...ranked, ...fallback].slice(0, 4);
+}
 
 export async function loadPosData(
   supabase: SupabaseClient,
@@ -125,10 +189,17 @@ export async function loadPosData(
     category_id: categoryRemap.get(item.category_id) ?? item.category_id
   }));
 
+  const popularItemIds = await loadPopularItemIds(
+    supabase,
+    merchantId,
+    dedupedMenuItems
+  );
+
   return {
     categories: uniqueCategories,
     items: dedupedMenuItems,
     tags: tags ?? [],
-    staff: staff ?? []
+    staff: staff ?? [],
+    popularItemIds
   };
 }

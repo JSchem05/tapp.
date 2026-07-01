@@ -12,6 +12,7 @@ import { redirect } from "next/navigation";
 
 type CompleteOrderInput = {
   tagId: string;
+  staffId?: string | null;
   items: PosOrderItem[];
   paymentMethod: "card" | "cash";
   status?: "open" | "completed";
@@ -49,10 +50,23 @@ function revalidateMenuPaths() {
 }
 
 export async function completePosOrder(input: CompleteOrderInput) {
-  const { supabase, merchant, staff } = await getMerchantAccessContext();
+  const { supabase, merchant } = await getMerchantAccessContext();
   const items = normalizeOrderItems(input.items);
   const status = input.status ?? "completed";
-  const staffId = staff?.id ?? null;
+  let staffId: string | null = input.staffId ?? null;
+
+  if (staffId) {
+    const { data: selectedStaff } = await supabase
+      .from("staff")
+      .select("id")
+      .eq("id", staffId)
+      .eq("merchant_id", merchant.id)
+      .maybeSingle<{ id: string }>();
+
+    if (!selectedStaff) {
+      throw new Error("Selected staff member was not found.");
+    }
+  }
 
   if (!input.tagId) {
     throw new Error("Select a counter before completing the order.");
