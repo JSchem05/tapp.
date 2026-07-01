@@ -1,6 +1,10 @@
 "use server";
 
 import { getMerchantAccessContext } from "@/lib/merchant-context";
+import {
+  normalizeCategoryDisplayName,
+  normalizeCategoryName
+} from "@/lib/menu-categories";
 import { calculateReceiptTotals, roundMoney } from "@/lib/money";
 import type { PosOrderItem } from "@/lib/types";
 import { revalidatePath } from "next/cache";
@@ -145,9 +149,12 @@ export async function completePosOrder(input: CompleteOrderInput) {
 
 export async function createCategory(formData: FormData) {
   const { supabase, merchant, staff } = await getMerchantAccessContext();
-  const name = String(formData.get("name") ?? "").trim();
+  const name = normalizeCategoryDisplayName(String(formData.get("name") ?? ""));
 
   if (!name) redirect(menuPath(staff, "?error=Category%20name%20is%20required"));
+  if (await categoryNameExists(supabase, merchant.id, name)) {
+    redirect(menuPath(staff, "?error=Category%20name%20already%20exists"));
+  }
 
   const { count } = await supabase
     .from("categories")
@@ -168,9 +175,12 @@ export async function createCategory(formData: FormData) {
 export async function updateCategory(formData: FormData) {
   const { supabase, merchant, staff } = await getMerchantAccessContext();
   const id = String(formData.get("id") ?? "");
-  const name = String(formData.get("name") ?? "").trim();
+  const name = normalizeCategoryDisplayName(String(formData.get("name") ?? ""));
 
   if (!id || !name) redirect(menuPath(staff, "?tab=categories&error=Missing%20category"));
+  if (await categoryNameExists(supabase, merchant.id, name, id)) {
+    redirect(menuPath(staff, "?tab=categories&error=Category%20name%20already%20exists"));
+  }
 
   await supabase
     .from("categories")
@@ -399,10 +409,14 @@ export async function deleteModifier(formData: FormData) {
 export async function loadSampleMenu() {
   const { supabase, merchant, staff } = await getMerchantAccessContext();
 
-  const { count } = await supabase
+  const { count, error: countError } = await supabase
     .from("categories")
     .select("id", { count: "exact", head: true })
     .eq("merchant_id", merchant.id);
+
+  if (countError) {
+    redirect(menuPath(staff, `?error=${encodeURIComponent(countError.message)}`));
+  }
 
   if ((count ?? 0) > 0) {
     redirect(menuPath(staff, "?error=Sample%20menu%20can%20only%20load%20before%20categories%20exist"));
@@ -462,4 +476,23 @@ export async function loadSampleMenu() {
   revalidatePath("/staff");
   revalidateMenuPaths();
   redirect(menuPath(staff, "?tab=items"));
+}
+
+async function categoryNameExists(
+  supabase: Awaited<ReturnType<typeof getMerchantAccessContext>>["supabase"],
+  merchantId: string,
+  name: string,
+  exceptId?: string
+) {
+  const { data } = await supabase
+    .from("categories")
+    .select("id,name")
+    .eq("merchant_id", merchantId)
+    .returns<Array<{ id: string; name: string }>>();
+  const normalized = normalizeCategoryName(name);
+
+  return (data ?? []).some(
+    (category) =>
+      category.id !== exceptId && normalizeCategoryName(category.name) === normalized
+  );
 }

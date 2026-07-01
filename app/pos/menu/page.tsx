@@ -1,6 +1,7 @@
 import { DashboardSidebar } from "@/app/dashboard/dashboard-sidebar";
 import { MenuBuilderClient } from "@/app/pos/menu/menu-builder-client";
 import { getOwnerContext } from "@/lib/merchant-context";
+import { dedupeMerchantCategories } from "@/lib/menu-categories";
 import type {
   Category,
   ItemModifierGroup,
@@ -17,6 +18,8 @@ export default async function PosMenuPage({
   searchParams?: { tab?: string; error?: string };
 }) {
   const { supabase, merchant } = await getOwnerContext();
+  await dedupeMerchantCategories(supabase, merchant.id);
+
   const [
     { data: categories },
     { data: items },

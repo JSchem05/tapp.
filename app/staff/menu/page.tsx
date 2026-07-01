@@ -1,5 +1,6 @@
 import { MenuBuilderClient } from "@/app/pos/menu/menu-builder-client";
 import { getStaffContext } from "@/lib/merchant-context";
+import { dedupeMerchantCategories } from "@/lib/menu-categories";
 import type {
   Category,
   ItemModifierGroup,
@@ -16,6 +17,8 @@ export default async function StaffMenuPage({
   searchParams?: { tab?: string; error?: string };
 }) {
   const { supabase, merchant } = await getStaffContext();
+  await dedupeMerchantCategories(supabase, merchant.id);
+
   const [
     { data: categories },
     { data: items },
