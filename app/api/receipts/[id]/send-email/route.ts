@@ -64,9 +64,9 @@ export async function POST(
 
   const { data: merchant } = await admin
     .from("merchants")
-    .select("name")
+    .select("name, vat_number, address")
     .eq("id", merchantId)
-    .single<{ name: string }>();
+    .single<{ name: string; vat_number: string | null; address: string | null }>();
 
   if (!merchant) {
     return NextResponse.json({ error: "Merchant not found" }, { status: 404 });
@@ -84,7 +84,9 @@ export async function POST(
     html: buildReceiptEmailHtml({
       merchantName: merchant.name,
       receipt,
-      receiptUrl
+      receiptUrl,
+      vatNumber: merchant.vat_number,
+      registeredAddress: merchant.address
     })
   });
 

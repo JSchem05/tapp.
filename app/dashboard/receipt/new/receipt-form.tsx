@@ -45,6 +45,7 @@ export function ReceiptForm({
   const displayTotal = isAwaitingFlow ? Number(awaitingReceipt?.total ?? totals.total) : totals.total;
   const previewReceipt = {
     id: "preview",
+    receipt_number: null,
     created_at: new Date().toISOString(),
     items: previewItems.length
       ? previewItems

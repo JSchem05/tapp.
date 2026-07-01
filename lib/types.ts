@@ -111,6 +111,7 @@ export type Receipt = {
   payment_method: PaymentMethod;
   awaiting_items: boolean;
   is_latest: boolean;
+  receipt_number: number | null;
   customer_email: string | null;
   created_at: string;
 };

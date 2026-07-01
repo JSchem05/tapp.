@@ -4,16 +4,37 @@ import type { Receipt, ReceiptItem } from "@/lib/types";
 export function buildReceiptEmailHtml({
   merchantName,
   receipt,
-  receiptUrl
+  receiptUrl,
+  vatNumber,
+  registeredAddress
 }: {
   merchantName: string;
   receipt: Pick<
     Receipt,
-    "items" | "subtotal" | "vat" | "total" | "payment_method" | "created_at"
+    | "items"
+    | "subtotal"
+    | "vat"
+    | "total"
+    | "payment_method"
+    | "created_at"
+    | "receipt_number"
   >;
   receiptUrl: string;
+  vatNumber?: string | null;
+  registeredAddress?: string | null;
 }) {
   const items = receipt.items as ReceiptItem[];
+  const fiscalRows = [
+    receipt.receipt_number != null
+      ? `<p style="margin:4px 0 0;font-size:14px;color:#6B7280;">Receipt #${receipt.receipt_number}</p>`
+      : "",
+    vatNumber?.trim()
+      ? `<p style="margin:4px 0 0;font-size:14px;color:#6B7280;">VAT registration: ${escapeHtml(vatNumber.trim())}</p>`
+      : "",
+    registeredAddress?.trim()
+      ? `<p style="margin:4px 0 0;font-size:14px;color:#6B7280;">${escapeHtml(registeredAddress.trim())}</p>`
+      : ""
+  ].join("");
   const itemRows = items
     .map(
       (item) => `
@@ -42,6 +63,7 @@ export function buildReceiptEmailHtml({
               <td style="padding:28px 28px 8px;">
                 <h1 style="margin:0;font-size:22px;color:#111111;">${escapeHtml(merchantName)}</h1>
                 <p style="margin:8px 0 0;font-size:14px;color:#6B7280;">${formatDateTime(receipt.created_at)}</p>
+                ${fiscalRows}
               </td>
             </tr>
             <tr>

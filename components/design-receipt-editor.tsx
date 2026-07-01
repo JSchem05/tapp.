@@ -10,7 +10,6 @@ import { useMemo, useState } from "react";
 type DesignReceiptState = {
   name: string;
   tagline: string;
-  show_business_details: boolean;
   vat_number: string;
   address: string;
   phone: string;
@@ -42,7 +41,6 @@ function initialState(merchant: Merchant): DesignReceiptState {
   return {
     name: merchant.name,
     tagline: merchant.tagline ?? "",
-    show_business_details: merchant.show_business_details ?? false,
     vat_number: merchant.vat_number ?? "",
     address: merchant.address ?? "",
     phone: merchant.phone ?? "",
@@ -71,6 +69,7 @@ function initialState(merchant: Merchant): DesignReceiptState {
 
 const SAMPLE_RECEIPT = {
   id: "00000000-0000-4000-8000-000000000001",
+  receipt_number: 128,
   created_at: "2026-06-30T12:00:00.000Z",
   items: [
     { name: "Cappuccino", qty: 1, price: 3.1 },
@@ -117,8 +116,7 @@ export function DesignReceiptEditor({ merchant }: { merchant: Merchant }) {
       show_loyalty: state.show_loyalty,
       show_email_opt_in: state.show_email_opt_in,
       show_social: state.show_social,
-      show_info: state.show_info,
-      show_business_details: state.show_business_details
+      show_info: state.show_info
     }),
     [merchant.logo_url, state]
   );
@@ -160,15 +158,10 @@ export function DesignReceiptEditor({ merchant }: { merchant: Merchant }) {
             </ControlCard>
 
             <ControlCard title="Business details">
-              <ToggleField
-                name="show_business_details"
-                label="Show business details on receipt"
-                checked={state.show_business_details}
-                onChange={(checked) => patch({ show_business_details: checked })}
-              />
               <SettingInput
                 name="vat_number"
                 label="VAT/registration number"
+                hint="Recommended for fiscal compliance"
                 value={state.vat_number}
                 onChange={(value) => patch({ vat_number: value })}
                 placeholder="MT12345678"
@@ -176,6 +169,7 @@ export function DesignReceiptEditor({ merchant }: { merchant: Merchant }) {
               <SettingInput
                 name="address"
                 label="Registered address"
+                hint="Recommended for fiscal compliance"
                 value={state.address}
                 onChange={(value) => patch({ address: value })}
                 placeholder="123 Republic Street, Valletta"
@@ -406,7 +400,8 @@ function SettingInput({
   onChange,
   placeholder,
   icon,
-  required
+  required,
+  hint
 }: {
   name: string;
   label: string;
@@ -415,10 +410,12 @@ function SettingInput({
   placeholder?: string;
   icon?: React.ReactNode;
   required?: boolean;
+  hint?: string;
 }) {
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
+      {hint ? <p className="text-xs text-muted">{hint}</p> : null}
       <div className="relative">
         {icon ? (
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">

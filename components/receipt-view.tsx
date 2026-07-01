@@ -35,6 +35,7 @@ type ReceiptDisplay = Pick<
   Receipt,
   | "id"
   | "created_at"
+  | "receipt_number"
   | "items"
   | "subtotal"
   | "vat"
@@ -511,11 +512,7 @@ export function ReceiptCard({
         </div>
       ) : null}
 
-      <BusinessDetailsDisclosure
-        profile={merchantProfile}
-        receiptId={receipt.id}
-        createdAt={receipt.created_at}
-      />
+      <FiscalReceiptMeta profile={merchantProfile} receipt={receipt} />
 
       <div className="divide-y divide-line border-y border-line">
         {items.map((item, index) => (
@@ -611,42 +608,42 @@ function PreviousVisits({
   );
 }
 
-function BusinessDetailsDisclosure({
-  createdAt,
+function FiscalReceiptMeta({
   profile,
-  receiptId
+  receipt
 }: {
-  createdAt: string;
   profile?: Partial<ReceiptMerchantProfile> | null;
-  receiptId: string;
+  receipt: Pick<ReceiptDisplay, "created_at" | "receipt_number">;
 }) {
-  if (!profile?.show_business_details) return null;
-
-  const rows = [
-    { label: "Receipt ID", value: shortReceiptId(receiptId) },
-    { label: "Date & time", value: formatDateTime(createdAt) },
-    { label: "Store", value: profile.address },
-    { label: "Tel", value: profile.phone },
-    { label: "VAT No", value: profile.vat_number }
-  ].filter((row) => row.value);
+  const vatNumber = profile?.vat_number?.trim();
+  const address = profile?.address?.trim();
 
   return (
-    <details className="group mb-4 rounded-[14px] border border-line bg-white">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-left transition hover:bg-blueSoft">
-        <span className="text-xs font-semibold text-muted">Receipt details</span>
-        <ChevronDown className="h-4 w-4 text-muted transition group-open:rotate-180" />
-      </summary>
-      <div className="space-y-2 border-t border-line px-3 py-3">
-        {rows.map((row) => (
-          <div key={row.label} className="grid grid-cols-[88px_1fr] gap-3 text-xs">
-            <span className="text-muted">{row.label}</span>
-            <span className="min-w-0 break-words font-medium text-ink/75">
-              {row.value}
-            </span>
-          </div>
-        ))}
+    <div className="mb-4 space-y-2 border-b border-line pb-4">
+      {receipt.receipt_number != null ? (
+        <p className="text-sm font-semibold text-ink">
+          Receipt #{receipt.receipt_number}
+        </p>
+      ) : null}
+      <div className="grid grid-cols-[minmax(0,auto)_1fr] gap-x-3 text-sm leading-6">
+        <span className="text-muted">Date & time</span>
+        <span className="min-w-0 break-words font-medium text-ink">
+          {formatDateTime(receipt.created_at)}
+        </span>
       </div>
-    </details>
+      {vatNumber ? (
+        <div className="grid grid-cols-[minmax(0,auto)_1fr] gap-x-3 text-sm leading-6">
+          <span className="text-muted">VAT registration</span>
+          <span className="min-w-0 break-words font-medium text-ink">{vatNumber}</span>
+        </div>
+      ) : null}
+      {address ? (
+        <div className="grid grid-cols-[minmax(0,auto)_1fr] gap-x-3 text-sm leading-6">
+          <span className="text-muted">Registered address</span>
+          <span className="min-w-0 break-words font-medium text-ink">{address}</span>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -670,10 +667,6 @@ function formatReceiptItemModifiers(item: ReceiptItem) {
       modifier.group_name ? `${modifier.group_name}: ${modifier.name}` : modifier.name
     )
     .join(", ");
-}
-
-function shortReceiptId(receiptId: string) {
-  return receiptId.replace(/-/g, "").slice(0, 10).toUpperCase();
 }
 
 function LogoMark({
