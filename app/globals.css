@@ -6,6 +6,46 @@
   .field {
     @apply h-11 rounded-[10px] border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/15;
   }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 1rem;
+  }
+
+  .modal-container {
+    max-height: 85vh;
+    max-width: 480px;
+    width: 90%;
+    display: flex;
+    flex-direction: column;
+    border-radius: 20px;
+    background: white;
+    overflow: hidden;
+  }
+
+  .modal-header {
+    flex-shrink: 0;
+    padding: 20px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .modal-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .modal-footer {
+    flex-shrink: 0;
+    padding: 20px;
+    border-top: 1px solid #e5e7eb;
+  }
 }
 
 :root {

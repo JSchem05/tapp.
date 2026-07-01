@@ -25,7 +25,7 @@ import type {
   Modifier,
   ModifierGroup
 } from "@/lib/types";
-import { useModalLifecycle } from "@/lib/use-modal-lifecycle";
+import { AppModal, AppModalBody, AppModalHeader } from "@/components/app-modal";
 import {
   DndContext,
   type DragEndEvent,
@@ -1329,27 +1329,20 @@ function ModalFrame({
   children: React.ReactNode;
   onClose: () => void;
 }) {
-  const scrollRef = useModalLifecycle<HTMLDivElement>();
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div
-        ref={scrollRef}
-        className="animate-tapp-fade max-h-[90vh] w-full max-w-[480px] overflow-y-auto rounded-[24px] border border-line bg-white p-6 shadow-lift"
-      >
-        <div className="mb-5 flex justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white text-muted"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
+    <AppModal open onClose={onClose} containerClassName="animate-tapp-fade">
+      <AppModalHeader className="flex justify-end border-b-0 pb-0">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white text-muted"
+          aria-label="Close"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </AppModalHeader>
+      <AppModalBody>{children}</AppModalBody>
+    </AppModal>
   );
 }
 

@@ -11,7 +11,7 @@ import type {
   PosOrderItem,
   Tag
 } from "@/lib/types";
-import { useModalLifecycle } from "@/lib/use-modal-lifecycle";
+import { AppModal, AppModalBody, AppModalFooter, AppModalHeader } from "@/components/app-modal";
 import {
   ChevronDown,
   ChevronRight,
@@ -72,7 +72,6 @@ export function PosClient({
   const [successUrl, setSuccessUrl] = useState("");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
-  const successModalRef = useModalLifecycle<HTMLDivElement>(Boolean(successUrl), successUrl);
   const orderQtyByItem = useMemo(() => {
     const map = new Map<string, number>();
     for (const item of orderItems) {
@@ -560,21 +559,20 @@ export function PosClient({
       ) : null}
 
       {successUrl ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div
-            ref={successModalRef}
-            className="animate-tapp-fade rounded-[20px] bg-white p-8 text-center shadow-lift"
-          >
+        <AppModal open onClose={() => setSuccessUrl("")} resetKey={successUrl}>
+          <AppModalHeader>
+            <h2 className="text-center text-3xl font-extrabold text-ink">Receipt is live</h2>
+          </AppModalHeader>
+          <AppModalBody className="text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-50 text-green-600">
               <Check className="h-8 w-8" />
             </div>
-            <h2 className="mt-4 text-3xl font-extrabold text-ink">Receipt is live</h2>
-            <p className="mt-2 break-all text-sm text-muted">{successUrl}</p>
+            <p className="mt-4 break-all text-sm text-muted">{successUrl}</p>
             <div className="mt-5 inline-flex rounded-2xl border border-line p-3">
               <QRCodeSVG value={successUrl} size={160} />
             </div>
-          </div>
-        </div>
+          </AppModalBody>
+        </AppModal>
       ) : null}
     </div>
   );
@@ -695,7 +693,6 @@ function ModifierModal({
   onAdd: () => void;
   onRemove: () => void;
 }) {
-  const scrollRef = useModalLifecycle<HTMLDivElement>();
   const selectedMods = state.item.modifierGroups.flatMap((group) =>
     (state.selections[group.id] ?? [])
       .map((id) => group.modifiers.find((modifier) => modifier.id === id))
@@ -722,12 +719,8 @@ function ModifierModal({
   const editing = typeof state.editIndex === "number";
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/30 p-0 md:items-center md:p-4">
-      <div
-        ref={scrollRef}
-        className="animate-tapp-fade max-h-[92vh] w-full max-w-[480px] overflow-y-auto rounded-t-[24px] bg-white p-6 shadow-lift md:rounded-[24px]"
-      >
-        <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-[#DDDDDD]" />
+    <AppModal open onClose={onClose} zIndexClassName="z-40" resetKey={state.item.id}>
+      <AppModalHeader>
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-4">
             <ItemImageThumb item={state.item} />
@@ -742,12 +735,15 @@ function ModifierModal({
             type="button"
             onClick={onClose}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line bg-white"
+            aria-label="Close"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
+      </AppModalHeader>
 
-        <div className="mt-6 space-y-5 border-t border-line pt-5">
+      <AppModalBody>
+        <div className="space-y-5 border-t border-line pt-5">
           {state.item.modifierGroups.length > 0 ? (
             state.item.modifierGroups.map((group) => (
               <section key={group.id}>
@@ -827,11 +823,13 @@ function ModifierModal({
             </p>
           </div>
         </div>
+      </AppModalBody>
 
+      <AppModalFooter>
         <button
           type="button"
           onClick={onAdd}
-          className="mt-5 h-[52px] w-full rounded-[10px] bg-blue text-base font-extrabold text-white"
+          className="h-[52px] w-full rounded-[10px] bg-blue text-base font-extrabold text-white"
         >
           {editing ? "Update order" : "Add to order"}
         </button>
@@ -852,8 +850,8 @@ function ModifierModal({
             Cancel
           </button>
         )}
-      </div>
-    </div>
+      </AppModalFooter>
+    </AppModal>
   );
 }
 
@@ -874,14 +872,9 @@ function PaymentModal({
   onClose: () => void;
   onConfirm: () => void;
 }) {
-  const scrollRef = useModalLifecycle<HTMLDivElement>();
-
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-      <div
-        ref={scrollRef}
-        className="animate-tapp-fade w-full max-w-[400px] rounded-[20px] bg-white p-8 shadow-lift"
-      >
+    <AppModal open onClose={onClose} zIndexClassName="z-40" containerClassName="max-w-[400px]">
+      <AppModalHeader>
         <div className="flex items-start justify-between">
           <div>
             <p className="text-sm font-semibold text-muted">Payment</p>
@@ -889,11 +882,19 @@ function PaymentModal({
               {formatCurrency(total)}
             </h2>
           </div>
-          <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-white">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-white"
+            aria-label="Close"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="mt-6 grid grid-cols-2 gap-3">
+      </AppModalHeader>
+
+      <AppModalBody>
+        <div className="grid grid-cols-2 gap-3">
           {(["cash", "card"] as const).map((method) => (
             <button
               key={method}
@@ -928,15 +929,18 @@ function PaymentModal({
             Card confirmation only for now. Stripe Terminal can connect here later.
           </p>
         )}
+      </AppModalBody>
+
+      <AppModalFooter>
         <button
           type="button"
           disabled={isPending}
           onClick={onConfirm}
-          className="mt-6 h-[52px] w-full rounded-[10px] bg-ink text-base font-extrabold text-white transition hover:bg-clay disabled:opacity-50"
+          className="h-[52px] w-full rounded-[10px] bg-ink text-base font-extrabold text-white transition hover:bg-clay disabled:opacity-50"
         >
           Confirm Payment
         </button>
-      </div>
-    </div>
+      </AppModalFooter>
+    </AppModal>
   );
 }

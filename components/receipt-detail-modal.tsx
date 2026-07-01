@@ -7,11 +7,11 @@ import {
   ReviewPromptSection
 } from "@/components/receipt-engagement-sections";
 import { ReceiptCard } from "@/components/receipt-view";
+import { AppModal, AppModalBody, AppModalHeader } from "@/components/app-modal";
 import { Input, Label } from "@/components/ui";
 import { getPromoConfig } from "@/lib/merchant-promo";
 import { formatDateTime } from "@/lib/money";
 import type { Receipt, ReceiptMerchantProfile } from "@/lib/types";
-import { useModalLifecycle } from "@/lib/use-modal-lifecycle";
 import { X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
@@ -38,24 +38,11 @@ export function ReceiptDetailModal({
 }) {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
-  const scrollRef = useModalLifecycle<HTMLDivElement>(
-    Boolean(detail),
-    detail?.receipt.id
-  );
 
   useEffect(() => {
     setEmail(sandboxRecipient ?? "");
     setSending(false);
   }, [detail?.receipt.id, sandboxRecipient]);
-
-  useEffect(() => {
-    if (!detail) return;
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [detail, onClose]);
 
   if (!detail) return null;
 
@@ -93,21 +80,15 @@ export function ReceiptDetailModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
-      role="presentation"
+    <AppModal
+      open
+      onClose={onClose}
+      resetKey={detail.receipt.id}
+      ariaLabelledBy="receipt-detail-title"
     >
-      <div
-        ref={scrollRef}
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[16px] bg-white p-6 shadow-lift"
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="receipt-detail-title"
-      >
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
+      <AppModalHeader>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
             <h2 id="receipt-detail-title" className="text-xl font-bold text-ink">
               {detail.merchantName}
             </h2>
@@ -116,14 +97,16 @@ export function ReceiptDetailModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-line text-ink hover:bg-[#FAFAFA]"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-line text-ink hover:bg-[#FAFAFA]"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
+      </AppModalHeader>
 
-        <div className="mb-4 space-y-1 text-sm">
+      <AppModalBody className="space-y-5">
+        <div className="space-y-1 text-sm">
           <p className="text-ink">
             <span className="font-semibold">Counter:</span> {detail.tagLabel}
           </p>
@@ -142,17 +125,15 @@ export function ReceiptDetailModal({
           className="border border-line shadow-none"
         />
 
-        <div className="mt-4 space-y-3">
-          {profile.show_review && profile.google_review_url ? (
-            <ReviewPromptSection profile={profile} />
-          ) : null}
-          {profile.show_loyalty ? <LoyaltyCardSection profile={profile} /> : null}
-          {promo.showPromo && promo.headline ? (
-            <PromoBannerSection profile={profile} />
-          ) : null}
-        </div>
+        {profile.show_review && profile.google_review_url ? (
+          <ReviewPromptSection profile={profile} />
+        ) : null}
+        {profile.show_loyalty ? <LoyaltyCardSection profile={profile} /> : null}
+        {promo.showPromo && promo.headline ? (
+          <PromoBannerSection profile={profile} />
+        ) : null}
 
-        <div className="mt-5 rounded-[16px] border border-line bg-blueSoft p-4 text-center">
+        <div className="rounded-[16px] border border-line bg-blueSoft p-4 text-center">
           <QRCodeSVG value={detail.receiptUrl} size={140} level="M" className="mx-auto" />
           <p className="mt-3 break-all text-xs text-muted">{detail.receiptUrl}</p>
           <div className="mt-3 flex justify-center">
@@ -160,7 +141,7 @@ export function ReceiptDetailModal({
           </div>
         </div>
 
-        <div className="mt-5 rounded-[16px] border border-line bg-white p-4">
+        <div className="rounded-[16px] border border-line bg-white p-4">
           <Label>Send by email</Label>
           {sandboxRecipient ? (
             <p className="mt-2 rounded-[10px] bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
@@ -196,7 +177,7 @@ export function ReceiptDetailModal({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </AppModalBody>
+    </AppModal>
   );
 }
