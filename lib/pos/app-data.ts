@@ -118,6 +118,7 @@ export async function loadPosAppData(
           .from("receipts")
           .select("created_at,total")
           .eq("merchant_id", merchant.id)
+          .eq("awaiting_items", false)
           .gte("created_at", chartStartDate.toISOString())
           .returns<RevenueReceipt[]>()
       : Promise.resolve({ data: [] as RevenueReceipt[] }),
@@ -166,9 +167,10 @@ export async function loadPosAppData(
 
   const receipts =
     mode === "owner" ? allReceipts ?? [] : staffReceipts ?? [];
+  const paidReceipts = receipts.filter((receipt) => !receipt.awaiting_items);
   const chartReceipts = revenueReceipts ?? [];
-  const totalRevenue = receipts.reduce((sum, receipt) => sum + Number(receipt.total), 0);
-  const receiptsToday = receipts.filter((receipt) =>
+  const totalRevenue = paidReceipts.reduce((sum, receipt) => sum + Number(receipt.total), 0);
+  const receiptsToday = paidReceipts.filter((receipt) =>
     receipt.created_at.startsWith(todayKey)
   ).length;
   const latestByTagId = Object.fromEntries(
@@ -185,7 +187,7 @@ export async function loadPosAppData(
     dashboard: {
       totalRevenue,
       receiptsToday,
-      avgTransaction: receipts.length ? totalRevenue / receipts.length : 0,
+      avgTransaction: paidReceipts.length ? totalRevenue / paidReceipts.length : 0,
       monthlyRevenue: revenueForMonth(chartReceipts, 0),
       chartData: buildRevenueData(chartReceipts),
       latestByTagId

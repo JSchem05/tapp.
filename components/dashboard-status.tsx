@@ -2,25 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-export function OpenClosedToggle() {
-  const [open, setOpen] = useState(true);
-
-  return (
-    <button
-      type="button"
-      onClick={() => setOpen((value) => !value)}
-      className="flex h-9 items-center gap-2 rounded-full border border-line bg-white px-3 text-sm font-bold text-ink shadow-sm transition hover:bg-[#FAFAFA] hover:shadow-soft"
-    >
-      <span
-        className={`h-2.5 w-2.5 rounded-full ${
-          open ? "bg-green-500" : "bg-muted"
-        }`}
-      />
-      {open ? "Open" : "Closed"}
-    </button>
-  );
-}
-
 export function HeaderClock() {
   const [now, setNow] = useState(() => new Date());
 

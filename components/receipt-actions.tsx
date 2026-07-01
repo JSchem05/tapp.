@@ -29,16 +29,20 @@ export function ReceiptActionsRow({
 
   async function saveImage() {
     if (!receiptRef.current) return;
-    const html2canvas = (await import("html2canvas")).default;
-    const canvas = await html2canvas(receiptRef.current, {
-      backgroundColor: "#FFFFFF",
-      scale: window.devicePixelRatio || 2
-    });
-    const link = document.createElement("a");
-    link.download = `tapp-receipt-${fileDate}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-    notify("Image saved");
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(receiptRef.current, {
+        backgroundColor: "#FFFFFF",
+        scale: window.devicePixelRatio || 2
+      });
+      const link = document.createElement("a");
+      link.download = `tapp-receipt-${fileDate}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+      notify("Image saved");
+    } catch {
+      notify("Could not save image");
+    }
   }
 
   async function shareReceipt() {

@@ -4,7 +4,7 @@ import { createReceipt } from "@/app/dashboard/receipt/new/actions";
 import { ReceiptCard } from "@/components/receipt-view";
 import { Card, Input, Label, SecondaryButton } from "@/components/ui";
 import { calculateReceiptTotals, formatCurrency } from "@/lib/money";
-import type { PaymentMethod, Receipt, ReceiptItem, Tag } from "@/lib/types";
+import type { PaymentMethod, Receipt, ReceiptItem, ReceiptMerchantProfile, Tag } from "@/lib/types";
 import { Minus, Plus, ReceiptText, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -16,6 +16,7 @@ export function ReceiptForm({
   error,
   merchantName,
   merchantLogoUrl,
+  merchantProfile,
   awaitingReceipt
 }: {
   tags: Tag[];
@@ -23,6 +24,7 @@ export function ReceiptForm({
   error?: string;
   merchantName: string;
   merchantLogoUrl?: string | null;
+  merchantProfile?: Partial<ReceiptMerchantProfile> | null;
   awaitingReceipt?: Receipt | null;
 }) {
   const [selectedTagId, setSelectedTagId] = useState(
@@ -270,6 +272,7 @@ export function ReceiptForm({
         <ReceiptCard
           merchantName={merchantName}
           merchantLogoUrl={merchantLogoUrl}
+          merchantProfile={merchantProfile}
           receipt={previewReceipt}
         />
       </aside>

@@ -4,8 +4,15 @@ import {
   getStaffDeviceSessionFromRequest,
   parseStaffDeviceSession
 } from "@/lib/device-session";
+import {
+  legacyDashboardRedirect,
+  legacyPosMenuRedirect,
+  legacyStaffRouteRedirect
+} from "@/lib/pos/view-routes";
 import { getSupabaseKey, getSupabaseUrl } from "@/lib/supabase/env";
 import { NextResponse, type NextRequest } from "next/server";
+
+const STAFF_RESTRICTED_VIEWS = new Set(["dashboard", "settings"]);
 
 const PUBLIC_PREFIXES = ["/t/", "/r/", "/api/"];
 const PUBLIC_EXACT = new Set(["/device", "/login"]);
@@ -108,8 +115,27 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/pos", request.url));
   }
 
-  if (isOwner && pathname === "/dashboard") {
-    return NextResponse.redirect(new URL("/pos", request.url));
+  if (isStaff && isStaffRoute(pathname)) {
+    const view = request.nextUrl.searchParams.get("view");
+    if (view && STAFF_RESTRICTED_VIEWS.has(view)) {
+      return NextResponse.redirect(new URL("/staff", request.url));
+    }
+  }
+
+  if (isOwner) {
+    const legacyTarget =
+      legacyDashboardRedirect(pathname, request.nextUrl.search) ??
+      legacyPosMenuRedirect(pathname, request.nextUrl.search);
+    if (legacyTarget) {
+      return NextResponse.redirect(new URL(legacyTarget, request.url));
+    }
+  }
+
+  if (isStaff) {
+    const legacyTarget = legacyStaffRouteRedirect(pathname, request.nextUrl.search);
+    if (legacyTarget) {
+      return NextResponse.redirect(new URL(legacyTarget, request.url));
+    }
   }
 
   return response;

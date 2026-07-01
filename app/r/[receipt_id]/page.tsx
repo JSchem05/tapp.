@@ -16,28 +16,13 @@ export default async function ReceiptPermalinkPage({
 
   const {
     data: receipt,
-    error: receiptError,
-    status
+    error: receiptError
   } = await supabase
     .from("receipts")
     .select("*")
     .eq("id", params.receipt_id)
     .eq("awaiting_items", false)
     .maybeSingle<Receipt>();
-
-  console.log("[permalink-receipt] receipt lookup", {
-    receiptId: params.receipt_id,
-    status,
-    error: receiptError,
-    receipt: receipt
-      ? {
-          id: receipt.id,
-          merchant_id: receipt.merchant_id,
-          tag_id: receipt.tag_id,
-          total: receipt.total
-        }
-      : null
-  });
 
   if (receiptError) {
     return (

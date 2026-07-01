@@ -577,11 +577,16 @@ function FiscalReceiptMeta({
   profile?: Partial<ReceiptMerchantProfile> | null;
   receipt: Pick<ReceiptDisplay, "created_at" | "receipt_number">;
 }) {
+  const businessName = profile?.name?.trim();
   const vatNumber = profile?.vat_number?.trim();
   const address = profile?.address?.trim();
+  const showBusinessDetails = profile?.show_business_details !== false;
 
   return (
     <div className="mb-4 space-y-2 border-b border-line pb-4">
+      {businessName && showBusinessDetails ? (
+        <p className="text-sm font-semibold text-ink">{businessName}</p>
+      ) : null}
       {receipt.receipt_number != null ? (
         <p className="text-sm font-semibold text-ink">
           Receipt #{receipt.receipt_number}

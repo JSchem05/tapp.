@@ -1,16 +1,15 @@
 "use client";
 
 import { createTag } from "@/app/dashboard/actions";
-import { HeaderClock, OpenClosedToggle } from "@/components/dashboard-status";
+import { HeaderClock } from "@/components/dashboard-status";
 import { RevenueChart } from "@/app/dashboard/revenue-chart";
 import { ReceiptCard } from "@/components/receipt-view";
 import { Input, Label } from "@/components/ui";
 import type { PosView } from "@/lib/pos/app-data";
 import { formatCurrency, formatDateTime } from "@/lib/money";
-import type { Merchant, Receipt, Tag } from "@/lib/types";
+import type { Merchant, Receipt, ReceiptMerchantProfile, Tag } from "@/lib/types";
 import {
   CircleAlert,
-  Maximize2,
   Plus,
   ReceiptText,
   Wifi
@@ -66,7 +65,6 @@ export function PosDashboardPanel({
       <header className="flex h-16 flex-nowrap items-center justify-between px-6">
         <div aria-hidden="true" />
         <div className="flex shrink-0 flex-nowrap items-center gap-3">
-          <OpenClosedToggle />
           <HeaderClock />
           <Link
             href="/dashboard/receipt/new"
@@ -131,7 +129,7 @@ export function PosDashboardPanel({
         />
         <StatCard
           label="Avg transaction"
-          trend={`Across ${receipts.length} receipts`}
+          trend={`Across ${receipts.filter((receipt) => !receipt.awaiting_items).length} paid receipts`}
           value={formatCurrency(avgTransaction)}
         />
         <StatCard
@@ -143,22 +141,14 @@ export function PosDashboardPanel({
 
       <section className="mx-6 mb-6 grid grid-cols-[1.6fr_1fr] items-start gap-4">
         <section className="rounded-[16px] border border-line bg-white p-6 shadow-soft">
-          <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-ink">Total Revenue</h2>
-            <button
-              type="button"
-              aria-label="Expand revenue chart"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white text-ink transition hover:bg-[#FAFAFA]"
-            >
-              <Maximize2 className="h-4 w-4" />
-            </button>
-          </div>
+          <h2 className="mb-5 text-base font-semibold text-ink">Total Revenue</h2>
           <RevenueChart data={chartData} />
         </section>
 
         <LiveReceiptCard
           merchantLogoUrl={merchant.logo_url}
           merchantName={merchant.name}
+          merchantProfile={merchant}
           receipt={selectedReceipt}
           selectedCounter={selectedCounter}
         />
@@ -333,11 +323,13 @@ function StatCard({
 function LiveReceiptCard({
   merchantName,
   merchantLogoUrl,
+  merchantProfile,
   selectedCounter,
   receipt
 }: {
   merchantName: string;
   merchantLogoUrl?: string | null;
+  merchantProfile?: Partial<ReceiptMerchantProfile> | null;
   selectedCounter: Tag | null;
   receipt: Receipt | null;
 }) {
@@ -371,6 +363,7 @@ function LiveReceiptCard({
           compact
           merchantLogoUrl={merchantLogoUrl}
           merchantName={merchantName}
+          merchantProfile={merchantProfile}
           receipt={receipt}
         />
       ) : (

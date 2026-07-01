@@ -85,10 +85,6 @@ export function PosApp({
   }, []);
 
   useEffect(() => {
-    setActiveView(parseView(initialView, mode));
-  }, [initialView, mode]);
-
-  useEffect(() => {
     if (dashboardTag) setDashboardTagId(dashboardTag);
   }, [dashboardTag]);
 
@@ -102,6 +98,14 @@ export function PosApp({
     },
     [mode]
   );
+
+  useEffect(() => {
+    const parsed = parseView(initialView, mode);
+    setActiveView(parsed);
+    if (initialView && initialView !== parsed) {
+      syncViewToUrl(parsed);
+    }
+  }, [initialView, mode, syncViewToUrl]);
 
   function changeView(view: PosView, query?: Record<string, string>) {
     setActiveView(view);
