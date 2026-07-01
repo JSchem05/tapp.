@@ -13,6 +13,7 @@ import type {
   Tag
 } from "@/lib/types";
 import { AppModal, AppModalBody, AppModalFooter, AppModalHeader } from "@/components/app-modal";
+import { PosSidebar } from "@/components/pos-sidebar";
 import {
   Banknote,
   Check,
@@ -34,7 +35,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
 
 const PASTEL_PALETTE = ["#E8F0FE", "#E6F7EF", "#FEF3E2", "#F0EBFC", "#FDEDF3"] as const;
 
@@ -58,6 +59,8 @@ export function PosClient({
   staff,
   popularItemIds,
   baseUrl,
+  mode,
+  headerSlot,
   embedded = false
 }: {
   merchantName: string;
@@ -68,6 +71,8 @@ export function PosClient({
   staff: Staff[];
   popularItemIds: string[];
   baseUrl: string;
+  mode: "owner" | "staff";
+  headerSlot?: ReactNode;
   embedded?: boolean;
 }) {
   const [activeCategory, setActiveCategory] = useState(categories[0]?.id ?? "");
@@ -320,18 +325,27 @@ export function PosClient({
   }
 
   return (
+    <>
     <div
-      className={`grid min-h-0 bg-cream lg:grid-cols-[minmax(0,1fr)_400px] ${
-        embedded ? "min-h-[calc(100dvh-9rem)]" : "h-[calc(100vh-64px)]"
+      className={`flex min-h-0 w-full bg-cream ${
+        embedded ? "min-h-[calc(100dvh-9rem)]" : "h-screen"
       }`}
     >
+      <PosSidebar
+        mode={mode}
+        staff={staff}
+        selectedStaffId={selectedStaffId}
+        onSelectStaff={toggleStaffSelection}
+        className={embedded ? "min-h-[calc(100dvh-9rem)]" : "h-screen"}
+      />
+      <div
+        className={`flex min-h-0 min-w-0 flex-1 flex-col ${
+          embedded ? "min-h-[calc(100dvh-9rem)]" : "h-screen"
+        }`}
+      >
+        {headerSlot}
+        <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_400px]">
       <section className="flex min-h-0 flex-col overflow-y-auto bg-cream">
-        <StaffAvatarRow
-          staff={staff}
-          selectedStaffId={selectedStaffId}
-          onSelect={toggleStaffSelection}
-        />
-
         <div className="px-6 py-3">
           <div className="flex h-11 w-full items-center rounded-[10px] border border-line bg-white px-3 focus-within:border-blue focus-within:ring-4 focus-within:ring-blue/10">
             <Search className="h-4 w-4 shrink-0 text-muted" />
@@ -570,6 +584,9 @@ export function PosClient({
           </button>
         </div>
       </aside>
+        </div>
+      </div>
+    </div>
 
       {modal ? (
         <ModifierModal
@@ -609,48 +626,7 @@ export function PosClient({
           </AppModalBody>
         </AppModal>
       ) : null}
-    </div>
-  );
-}
-
-function StaffAvatarRow({
-  staff,
-  selectedStaffId,
-  onSelect
-}: {
-  staff: Staff[];
-  selectedStaffId: string | null;
-  onSelect: (staffId: string) => void;
-}) {
-  if (staff.length === 0) return null;
-
-  return (
-    <div className="flex shrink-0 items-center gap-3 border-b border-line px-6 py-3">
-      {staff.map((member, index) => {
-        const selected = selectedStaffId === member.id;
-        const pastel = PASTEL_PALETTE[index % PASTEL_PALETTE.length];
-        return (
-          <button
-            key={member.id}
-            type="button"
-            onClick={() => onSelect(member.id)}
-            className="flex shrink-0 flex-col items-center gap-1"
-          >
-            <span
-              className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-ink ${
-                selected ? "ring-2 ring-blue ring-offset-2" : ""
-              }`}
-              style={{ backgroundColor: pastel }}
-            >
-              {member.name.trim()[0]?.toUpperCase() ?? "?"}
-            </span>
-            <span className="max-w-[72px] truncate text-xs font-semibold text-ink">
-              {formatStaffShortName(member.name)}
-            </span>
-          </button>
-        );
-      })}
-    </div>
+    </>
   );
 }
 
@@ -711,13 +687,6 @@ function PosItemCard({
       ) : null}
     </article>
   );
-}
-
-function formatStaffShortName(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "Staff";
-  if (parts.length === 1) return parts[0];
-  return `${parts[0]} ${parts[parts.length - 1][0]}.`;
 }
 
 function categoryIcon(name: string): LucideIcon {
