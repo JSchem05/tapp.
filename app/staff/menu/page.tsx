@@ -50,6 +50,7 @@ export default async function StaffMenuPage({
 
   return (
     <MenuBuilderClient
+      merchantId={merchant.id}
       merchantName={merchant.name}
       categories={categories ?? []}
       items={items ?? []}

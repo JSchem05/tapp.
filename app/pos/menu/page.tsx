@@ -58,6 +58,7 @@ export default async function PosMenuPage({
       />
       <div className="min-h-screen lg:ml-[200px]">
         <MenuBuilderClient
+          merchantId={merchant.id}
           merchantName={merchant.name}
           categories={categories ?? []}
           items={items ?? []}

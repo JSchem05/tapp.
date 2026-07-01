@@ -17,6 +17,7 @@ import {
   updateCategoryOrder
 } from "@/app/pos/actions";
 import { formatCurrency } from "@/lib/money";
+import { createClient } from "@/lib/supabase/browser";
 import type {
   Category,
   ItemModifierGroup,
@@ -49,11 +50,12 @@ import {
   Trash2,
   X
 } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 
 type Tab = "categories" | "items" | "modifiers";
 
 export function MenuBuilderClient({
+  merchantId,
   categories,
   items,
   groups,
@@ -62,6 +64,7 @@ export function MenuBuilderClient({
   initialTab,
   error
 }: {
+  merchantId: string;
   merchantName: string;
   categories: Category[];
   items: MenuItem[];
@@ -128,6 +131,7 @@ export function MenuBuilderClient({
           groups={groups}
           itemGroups={itemGroups}
           items={items}
+          merchantId={merchantId}
         />
       ) : null}
       {tab === "modifiers" ? (
@@ -315,13 +319,15 @@ function ItemsTab({
   firstTimeSetup,
   groups,
   itemGroups,
-  items
+  items,
+  merchantId
 }: {
   categories: Category[];
   firstTimeSetup: boolean;
   groups: ModifierGroup[];
   itemGroups: ItemModifierGroup[];
   items: MenuItem[];
+  merchantId: string;
 }) {
   const [filter, setFilter] = useState("all");
   const categoryById = useMemo(
@@ -350,7 +356,7 @@ function ItemsTab({
                 </option>
               ))}
             </select>
-            <ItemEditor categories={categories} groups={groups} />
+            <ItemEditor categories={categories} groups={groups} merchantId={merchantId} />
           </div>
         }
       />
@@ -367,13 +373,16 @@ function ItemsTab({
               categoryName={categoryById.get(item.category_id)?.name ?? "No category"}
               groups={groups}
               item={item}
+              merchantId={merchantId}
             />
           ))}
         </div>
       ) : (
         <EmptyState
           title={emptyTitle}
-          primaryAction={<ItemEditor categories={categories} groups={groups} />}
+          primaryAction={
+            <ItemEditor categories={categories} groups={groups} merchantId={merchantId} />
+          }
           secondaryAction={firstTimeSetup ? <LoadSampleButton /> : null}
         />
       )}
@@ -386,13 +395,15 @@ function ItemRow({
   categories,
   categoryName,
   groups,
-  item
+  item,
+  merchantId
 }: {
   attachedGroupIds: string[];
   categories: Category[];
   categoryName: string;
   groups: ModifierGroup[];
   item: MenuItem;
+  merchantId: string;
 }) {
   return (
     <div className="mb-2 flex items-center rounded-[16px] border border-line bg-white p-4 shadow-soft">
@@ -426,6 +437,7 @@ function ItemRow({
           categories={categories}
           groups={groups}
           item={item}
+          merchantId={merchantId}
         />
         <form action={deleteMenuItem}>
           <input type="hidden" name="id" value={item.id} />
@@ -445,22 +457,107 @@ function ItemEditor({
   attachedGroupIds = [],
   categories,
   groups,
-  item
+  item,
+  merchantId
 }: {
   attachedGroupIds?: string[];
   categories: Category[];
   groups: ModifierGroup[];
   item?: MenuItem;
+  merchantId: string;
 }) {
   const [open, setOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState({
     name: item?.name ?? "",
     category_id: item?.category_id ?? categories[0]?.id ?? "",
     price: String(item?.price ?? ""),
     description: item?.description ?? "",
     is_available: item?.is_available ?? true,
-    groupIds: attachedGroupIds
+    groupIds: attachedGroupIds,
+    imageUrl: item?.image_url ?? ""
   });
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [uploadToast, setUploadToast] = useState("");
+  const [newGroupOpen, setNewGroupOpen] = useState(false);
+  const [newGroup, setNewGroup] = useState({
+    name: "",
+    required: false,
+    multi_select: false,
+    options: [
+      { name: "", price_delta: "0" },
+      { name: "", price_delta: "0" }
+    ]
+  });
+  const attachedGroups = groups.filter((group) => state.groupIds.includes(group.id));
+  const availableGroups = groups.filter((group) => !state.groupIds.includes(group.id));
+
+  function showUploadError(message: string) {
+    setUploadError(message);
+    setUploadToast(message);
+  }
+
+  async function uploadImage(file: File) {
+    setUploadError("");
+    setUploadToast("");
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowedTypes.includes(file.type)) {
+      showUploadError("Upload a JPG, PNG, WebP, or GIF image.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      showUploadError("Image must be 5MB or smaller.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const extension = file.name.split(".").pop()?.toLowerCase() ?? "png";
+      const safeName = file.name
+        .replace(/\.[^/.]+$/, "")
+        .replace(/[^a-z0-9]+/gi, "-")
+        .replace(/^-|-$/g, "")
+        .toLowerCase();
+      const path = `${merchantId}/item-${Date.now()}-${safeName || "image"}.${extension}`;
+      const supabase = createClient();
+      const { error } = await supabase.storage
+        .from("menu-images")
+        .upload(path, file, {
+          cacheControl: "3600",
+          contentType: file.type,
+          upsert: true
+        });
+
+      if (error) {
+        showUploadError(error.message);
+        return;
+      }
+
+      const { data } = supabase.storage.from("menu-images").getPublicUrl(path);
+      setState((current) => ({ ...current, imageUrl: data.publicUrl }));
+    } catch (caught) {
+      showUploadError(caught instanceof Error ? caught.message : "Image upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function detachGroup(groupId: string) {
+    setState({
+      ...state,
+      groupIds: state.groupIds.filter((id) => id !== groupId)
+    });
+  }
+
+  function attachGroup(groupId: string) {
+    setState({
+      ...state,
+      groupIds: [...state.groupIds, groupId]
+    });
+  }
 
   return (
     <>
@@ -477,23 +574,95 @@ function ItemEditor({
         {item ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
         {item ? null : "Add item"}
       </button>
+      {uploadToast ? (
+        <div
+          role="alert"
+          className="animate-tapp-toast fixed bottom-5 right-5 z-[60] max-w-[320px] rounded-[14px] bg-red-50 px-4 py-3 text-sm font-bold text-red-700 shadow-lift"
+        >
+          {uploadToast}
+        </div>
+      ) : null}
       {open ? (
         <ModalFrame onClose={() => setOpen(false)}>
           <form action={saveMenuItem}>
             <input type="hidden" name="id" value={item?.id ?? ""} />
-            <input type="hidden" name="existing_image_url" value={item?.image_url ?? ""} />
+            <input type="hidden" name="existing_image_url" value={state.imageUrl} />
             <input type="hidden" name="is_available" value={String(state.is_available)} />
             <ModalTitle eyebrow={item ? "Edit item" : "Add item"} title="Menu item" />
-            <div className="grid gap-4">
-              <Field label="Name">
-                <input
-                  name="name"
-                  value={state.name}
-                  onChange={(event) => setState({ ...state, name: event.target.value })}
-                  className="field"
-                  required
-                />
-              </Field>
+            <div className="grid gap-5">
+              <section className="border-b border-line pb-5">
+                <p className="mb-2 text-sm font-bold text-muted">Image</p>
+                <label
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    const [file] = Array.from(event.dataTransfer.files);
+                    if (file) void uploadImage(file);
+                  }}
+                  className="group relative flex aspect-square w-full max-w-[180px] cursor-pointer items-center justify-center overflow-hidden rounded-[16px] border border-dashed border-line bg-white text-center shadow-soft"
+                >
+                  {state.imageUrl ? (
+                    <img
+                      src={state.imageUrl}
+                      alt={state.name || "Item image preview"}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="px-5">
+                      <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-blueSoft text-blue">
+                        <ImagePlus className="h-5 w-5" />
+                      </div>
+                      <p className="mt-3 text-sm font-bold text-ink">
+                        Upload item image
+                      </p>
+                      <p className="mt-1 text-xs text-muted">Drop or choose an image</p>
+                    </div>
+                  )}
+                  <span className="absolute inset-x-3 bottom-3 hidden rounded-full bg-ink/85 px-3 py-2 text-xs font-bold text-white group-hover:block">
+                    {uploading ? "Uploading..." : state.imageUrl ? "Change" : "Choose image"}
+                  </span>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.webp,.gif"
+                    className="sr-only"
+                    onChange={(event) => {
+                      const file = event.currentTarget.files?.[0];
+                      if (file) void uploadImage(file);
+                    }}
+                  />
+                </label>
+                {uploadError ? (
+                  <p className="mt-2 rounded-[10px] bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
+                    {uploadError}
+                  </p>
+                ) : null}
+              </section>
+
+              <section className="grid gap-4 border-b border-line pb-5">
+                <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
+                  <Field label="Name">
+                    <input
+                      name="name"
+                      value={state.name}
+                      onChange={(event) => setState({ ...state, name: event.target.value })}
+                      className="field"
+                      required
+                    />
+                  </Field>
+                  <Field label="Price">
+                    <div className="flex h-11 items-center rounded-[10px] border border-line bg-white transition focus-within:border-blue focus-within:ring-4 focus-within:ring-blue/15">
+                      <span className="pl-3 font-bold text-muted">€</span>
+                      <input
+                        name="price"
+                        value={state.price}
+                        onChange={(event) => setState({ ...state, price: event.target.value })}
+                        className="min-w-0 flex-1 bg-transparent px-2 outline-none"
+                        required
+                      />
+                    </div>
+                  </Field>
+                </div>
               <Field label="Category">
                 <select
                   name="category_id"
@@ -511,18 +680,6 @@ function ItemEditor({
                   ))}
                 </select>
               </Field>
-              <Field label="Price">
-                <div className="flex h-11 items-center rounded-[10px] border border-line bg-white">
-                  <span className="pl-3 font-bold text-muted">€</span>
-                  <input
-                    name="price"
-                    value={state.price}
-                    onChange={(event) => setState({ ...state, price: event.target.value })}
-                    className="min-w-0 flex-1 bg-transparent px-2 outline-none"
-                    required
-                  />
-                </div>
-              </Field>
               <Field label="Description">
                 <textarea
                   name="description"
@@ -533,49 +690,214 @@ function ItemEditor({
                   className="min-h-24 rounded-[10px] border border-line bg-white px-3 py-2 outline-none focus:border-ink focus:ring-4 focus:ring-ink/10"
                 />
               </Field>
-              <Field label="Image">
-                <label className="flex cursor-pointer items-center gap-3 rounded-[16px] border border-dashed border-line bg-white p-4 hover:bg-[#FAFAFA]">
-                  <ImagePlus className="h-5 w-5 text-ink" />
-                  <span className="text-sm font-bold text-muted">Upload item image</span>
-                  <input name="image" type="file" accept="image/*" className="sr-only" />
-                </label>
-              </Field>
-              <Field label="Modifier groups">
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {groups.length > 0 ? (
-                    groups.map((group) => {
-                      const checked = state.groupIds.includes(group.id);
-                      return (
-                        <label
-                          key={group.id}
-                          className="flex items-center gap-2 rounded-[12px] border border-line p-3 text-sm font-bold text-ink"
+              <label className="flex items-center justify-between rounded-[12px] border border-line p-3">
+                <span>
+                  <span className="block text-sm font-bold text-ink">Available</span>
+                  <span className="text-xs text-muted">Show this item in the POS grid</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setState({ ...state, is_available: !state.is_available })
+                  }
+                  className={`relative h-7 w-12 rounded-full transition ${
+                    state.is_available ? "bg-blue" : "bg-[#E5E7EB]"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition ${
+                      state.is_available ? "left-6" : "left-1"
+                    }`}
+                  />
+                </button>
+              </label>
+              </section>
+
+              <section>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-ink">Modifier groups</p>
+                    <p className="text-xs text-muted">
+                      Attach coffee-shop options like size, milk, syrup, and extras.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setNewGroupOpen((value) => !value)}
+                    className="h-9 rounded-full border border-line bg-white px-3 text-xs font-bold text-ink hover:bg-[#FAFAFA]"
+                  >
+                    Create new group
+                  </button>
+                </div>
+
+                {attachedGroups.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {attachedGroups.map((group) => (
+                      <span
+                        key={group.id}
+                        className="inline-flex items-center gap-2 rounded-full bg-blueSoft px-3 py-1.5 text-xs font-bold text-ink"
+                      >
+                        {group.name}
+                        <button
+                          type="button"
+                          onClick={() => detachGroup(group.id)}
+                          className="text-muted hover:text-ink"
+                          aria-label={`Detach ${group.name}`}
                         >
-                          <input
-                            type="checkbox"
-                            name="modifier_group_ids"
-                            value={group.id}
-                            checked={checked}
-                            onChange={() =>
-                              setState({
-                                ...state,
-                                groupIds: checked
-                                  ? state.groupIds.filter((id) => id !== group.id)
-                                  : [...state.groupIds, group.id]
-                              })
-                            }
-                          />
-                          {group.name}
-                        </label>
-                      );
-                    })
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+
+                {state.groupIds.map((groupId) => (
+                  <input
+                    key={groupId}
+                    type="hidden"
+                    name="modifier_group_ids"
+                    value={groupId}
+                  />
+                ))}
+
+                <div className="mt-3 grid gap-2">
+                  {availableGroups.length > 0 ? (
+                    availableGroups.map((group) => (
+                      <button
+                        key={group.id}
+                        type="button"
+                        onClick={() => attachGroup(group.id)}
+                        className="flex items-center justify-between rounded-[12px] border border-line bg-white p-3 text-left hover:bg-[#FAFAFA]"
+                      >
+                        <span>
+                          <span className="block text-sm font-bold text-ink">
+                            {group.name}
+                          </span>
+                          <span className="text-xs text-muted">
+                            {group.required ? "Required" : "Optional"}
+                            {group.multi_select ? " · Multi-select" : " · Single-select"}
+                          </span>
+                        </span>
+                        <Plus className="h-4 w-4 text-muted" />
+                      </button>
+                    ))
                   ) : (
-                    <p className="text-sm text-muted">No modifier groups yet.</p>
+                    <p className="rounded-[12px] border border-line bg-white p-3 text-sm text-muted">
+                      All existing modifier groups are attached.
+                    </p>
                   )}
                 </div>
-              </Field>
+
+                {newGroupOpen ? (
+                  <div className="mt-3 rounded-[16px] border border-line bg-white p-4">
+                    <input
+                      type="hidden"
+                      name="new_modifier_group_enabled"
+                      value={newGroup.name.trim() ? "true" : "false"}
+                    />
+                    <Field label="New group name">
+                      <input
+                        name="new_modifier_group_name"
+                        value={newGroup.name}
+                        onChange={(event) =>
+                          setNewGroup({ ...newGroup, name: event.target.value })
+                        }
+                        className="field"
+                        placeholder="Milk"
+                      />
+                    </Field>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <ToggleField
+                        checked={newGroup.required}
+                        label="Required"
+                        name="new_modifier_group_required"
+                        onChange={() =>
+                          setNewGroup({ ...newGroup, required: !newGroup.required })
+                        }
+                      />
+                      <ToggleField
+                        checked={newGroup.multi_select}
+                        label="Multi-select"
+                        name="new_modifier_group_multi_select"
+                        onChange={() =>
+                          setNewGroup({
+                            ...newGroup,
+                            multi_select: !newGroup.multi_select
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="mt-4 grid gap-2">
+                      {newGroup.options.map((option, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <input
+                            name="new_modifier_option_names"
+                            value={option.name}
+                            onChange={(event) => {
+                              const options = [...newGroup.options];
+                              options[index] = { ...option, name: event.target.value };
+                              setNewGroup({ ...newGroup, options });
+                            }}
+                            className="field min-w-0 flex-1"
+                            placeholder="Oat milk"
+                          />
+                          <div className="flex h-10 w-[110px] items-center rounded-[10px] border border-line bg-white">
+                            <span className="pl-3 text-sm font-bold text-muted">€</span>
+                            <input
+                              name="new_modifier_option_prices"
+                              value={option.price_delta}
+                              onChange={(event) => {
+                                const options = [...newGroup.options];
+                                options[index] = {
+                                  ...option,
+                                  price_delta: event.target.value
+                                };
+                                setNewGroup({ ...newGroup, options });
+                              }}
+                              className="min-w-0 flex-1 bg-transparent px-2 text-sm outline-none"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setNewGroup({
+                                ...newGroup,
+                                options: newGroup.options.filter((_, optionIndex) => optionIndex !== index)
+                              })
+                            }
+                            className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-red-50 text-red-700"
+                            aria-label="Remove option"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNewGroup({
+                          ...newGroup,
+                          options: [...newGroup.options, { name: "", price_delta: "0" }]
+                        })
+                      }
+                      className="mt-3 text-sm font-bold text-blue"
+                    >
+                      Add option
+                    </button>
+                  </div>
+                ) : null}
+              </section>
             </div>
             <button className="mt-6 h-12 w-full rounded-[10px] bg-blue text-sm font-bold text-white">
               Save item
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="mt-3 w-full text-center text-sm font-semibold text-muted"
+            >
+              Cancel
             </button>
           </form>
         </ModalFrame>
@@ -882,6 +1204,39 @@ function Field({
     <label className="grid gap-2 text-sm font-bold text-muted">
       {label}
       {children}
+    </label>
+  );
+}
+
+function ToggleField({
+  checked,
+  label,
+  name,
+  onChange
+}: {
+  checked: boolean;
+  label: string;
+  name: string;
+  onChange: () => void;
+}) {
+  return (
+    <label className="flex items-center justify-between rounded-[12px] border border-line bg-white p-3">
+      <span className="text-sm font-bold text-ink">{label}</span>
+      <input type="hidden" name={name} value={checked ? "on" : "off"} />
+      <button
+        type="button"
+        onClick={onChange}
+        className={`relative h-7 w-12 rounded-full transition ${
+          checked ? "bg-blue" : "bg-[#E5E7EB]"
+        }`}
+        aria-pressed={checked}
+      >
+        <span
+          className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition ${
+            checked ? "left-6" : "left-1"
+          }`}
+        />
+      </button>
     </label>
   );
 }

@@ -217,15 +217,19 @@ export async function updateCategoryOrder(ids: string[]) {
 export async function saveMenuItem(formData: FormData) {
   const { supabase, merchant, staff } = await getMerchantAccessContext();
   const id = String(formData.get("id") ?? "");
-  const name = String(formData.get("name") ?? "").trim();
+  const name = normalizeCategoryDisplayName(String(formData.get("name") ?? ""));
   const categoryId = String(formData.get("category_id") ?? "");
   const price = Number(formData.get("price") ?? 0);
   const description = String(formData.get("description") ?? "").trim() || null;
-  const groupIds = formData.getAll("modifier_group_ids").map(String);
+  const groupIds = Array.from(new Set(formData.getAll("modifier_group_ids").map(String)));
   const image = formData.get("image");
 
-  if (!name || !categoryId || price < 0) {
+  if (!name || !categoryId || Number.isNaN(price) || price < 0) {
     redirect(menuPath(staff, "?tab=items&error=Add%20a%20name,%20category,%20and%20price"));
+  }
+
+  if (await menuItemNameExists(supabase, merchant.id, categoryId, name, id || undefined)) {
+    redirect(menuPath(staff, "?tab=items&error=Item%20already%20exists%20in%20this%20category"));
   }
 
   let imageUrl = String(formData.get("existing_image_url") ?? "") || null;
@@ -287,10 +291,13 @@ export async function saveMenuItem(formData: FormData) {
     itemId = data.id;
   }
 
+  const newGroupId = await maybeCreateInlineModifierGroup(formData);
+  const linkedGroupIds = Array.from(new Set([...groupIds, ...(newGroupId ? [newGroupId] : [])]));
+
   await supabase.from("item_modifier_groups").delete().eq("item_id", itemId);
-  if (groupIds.length > 0) {
+  if (linkedGroupIds.length > 0) {
     await supabase.from("item_modifier_groups").insert(
-      groupIds.map((groupId) => ({
+      linkedGroupIds.map((groupId) => ({
         item_id: itemId,
         group_id: groupId
       }))
@@ -301,6 +308,58 @@ export async function saveMenuItem(formData: FormData) {
   revalidatePath("/staff");
   revalidateMenuPaths();
   redirect(menuPath(staff, "?tab=items"));
+
+  async function maybeCreateInlineModifierGroup(source: FormData) {
+    if (source.get("new_modifier_group_enabled") !== "true") return null;
+
+    const groupName = normalizeCategoryDisplayName(
+      String(source.get("new_modifier_group_name") ?? "")
+    );
+    if (!groupName) return null;
+
+    const { data: group, error: groupError } = await supabase
+      .from("modifier_groups")
+      .insert({
+        merchant_id: merchant.id,
+        name: groupName,
+        required: source.get("new_modifier_group_required") === "on",
+        multi_select: source.get("new_modifier_group_multi_select") === "on"
+      })
+      .select("id")
+      .single<{ id: string }>();
+
+    if (groupError || !group) {
+      redirect(
+        menuPath(
+          staff,
+          `?tab=items&error=${encodeURIComponent(groupError?.message ?? "Modifier group could not be created")}`
+        )
+      );
+    }
+
+    const optionNames = source.getAll("new_modifier_option_names").map((value) =>
+      normalizeCategoryDisplayName(String(value))
+    );
+    const optionPrices = source.getAll("new_modifier_option_prices").map((value) =>
+      Number(value ?? 0)
+    );
+    const options = optionNames
+      .map((optionName, index) => ({
+        group_id: group.id,
+        name: optionName,
+        price_delta: Number.isNaN(optionPrices[index]) ? 0 : optionPrices[index]
+      }))
+      .filter((option) => option.name);
+
+    if (options.length > 0) {
+      const { error: optionError } = await supabase.from("modifiers").insert(options);
+      if (optionError) {
+        redirect(menuPath(staff, `?tab=items&error=${encodeURIComponent(optionError.message)}`));
+      }
+    }
+
+    return group.id;
+  }
 }
 
 export async function toggleMenuItemAvailability(formData: FormData) {
@@ -494,5 +553,25 @@ async function categoryNameExists(
   return (data ?? []).some(
     (category) =>
       category.id !== exceptId && normalizeCategoryName(category.name) === normalized
+  );
+}
+
+async function menuItemNameExists(
+  supabase: Awaited<ReturnType<typeof getMerchantAccessContext>>["supabase"],
+  merchantId: string,
+  categoryId: string,
+  name: string,
+  exceptId?: string
+) {
+  const { data } = await supabase
+    .from("menu_items")
+    .select("id,name")
+    .eq("merchant_id", merchantId)
+    .eq("category_id", categoryId)
+    .returns<Array<{ id: string; name: string }>>();
+  const normalized = normalizeCategoryName(name);
+
+  return (data ?? []).some(
+    (item) => item.id !== exceptId && normalizeCategoryName(item.name) === normalized
   );
 }
