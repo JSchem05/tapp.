@@ -9,6 +9,7 @@ import {
   ReviewPromptSection
 } from "@/components/receipt-engagement-sections";
 import { joinReceiptOffers } from "@/app/receipt-engagement/actions";
+import { ReceiptActionsRow } from "@/components/receipt-actions";
 import { formatCurrency, formatDateTime } from "@/lib/money";
 import { getPromoConfig } from "@/lib/merchant-promo";
 import { cn } from "@/lib/utils";
@@ -17,15 +18,12 @@ import {
   Check,
   ChevronDown,
   Copy,
-  Download,
   Globe,
   Instagram,
   Lock,
   Mail,
   MapPin,
   Phone,
-  Printer,
-  Share2,
   Wifi
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -92,36 +90,7 @@ export function ReceiptView({
     window.setTimeout(() => setToast(""), 2200);
   }
 
-  function savePdf() {
-    window.print();
-  }
-
-  async function saveImage() {
-    if (!receiptRef.current) return;
-    const html2canvas = (await import("html2canvas")).default;
-    const canvas = await html2canvas(receiptRef.current, {
-      backgroundColor: "#FFFFFF",
-      scale: window.devicePixelRatio || 2
-    });
-    const link = document.createElement("a");
-    link.download = `tapp-receipt-${fileDate}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-    notify("Image saved");
-  }
-
-  async function shareReceipt() {
-    const url = permalink ?? window.location.href;
-    const title = `Receipt from ${merchantName}`;
-
-    if (navigator.share) {
-      await navigator.share({ title, url });
-      return;
-    }
-
-    await navigator.clipboard.writeText(url);
-    notify("Link copied to clipboard");
-  }
+  const shareUrl = permalink || currentUrl || "";
 
   return (
     <div className="animate-tapp-fade space-y-3">
@@ -153,20 +122,13 @@ export function ReceiptView({
       </ReceiptSection>
 
       {showActions ? (
-        <ReceiptSection delay={banner ? 180 : 120} className="no-print grid grid-cols-3 gap-2">
-          <ActionButton onClick={savePdf} icon={<Printer className="h-4 w-4" />}>
-            Save PDF
-          </ActionButton>
-          <ActionButton
-            onClick={saveImage}
-            icon={<Download className="h-4 w-4" />}
-          >
-            Save image
-          </ActionButton>
-          <ActionButton onClick={shareReceipt} icon={<Share2 className="h-4 w-4" />}>
-            Share
-          </ActionButton>
-        </ReceiptSection>
+        <ReceiptActionsRow
+          receiptRef={receiptRef}
+          merchantName={merchantName}
+          permalink={shareUrl}
+          fileDate={fileDate}
+          onNotify={notify}
+        />
       ) : null}
 
       {profile.show_review && profile.google_review_url ? (
@@ -783,26 +745,5 @@ function ReceiptRow({ label, value }: { label: string; value: string }) {
       <span className="text-muted">{label}</span>
       <span className="font-semibold text-ink">{value}</span>
     </div>
-  );
-}
-
-function ActionButton({
-  children,
-  icon,
-  onClick
-}: {
-  children: React.ReactNode;
-  icon: React.ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-full border border-line bg-white px-3 text-xs font-semibold text-ink shadow-soft transition hover:border-amber hover:bg-blueSoft hover:text-amber hover:shadow-lift sm:text-sm"
-    >
-      {icon}
-      <span className="truncate">{children}</span>
-    </button>
   );
 }

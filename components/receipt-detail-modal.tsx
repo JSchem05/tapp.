@@ -7,6 +7,7 @@ import {
   ReviewPromptSection
 } from "@/components/receipt-engagement-sections";
 import { ReceiptCard } from "@/components/receipt-view";
+import { ReceiptActionsRow } from "@/components/receipt-actions";
 import { AppModal, AppModalBody, AppModalHeader } from "@/components/app-modal";
 import { Input, Label } from "@/components/ui";
 import { getPromoConfig } from "@/lib/merchant-promo";
@@ -14,7 +15,7 @@ import { formatDateTime } from "@/lib/money";
 import type { Receipt, ReceiptMerchantProfile } from "@/lib/types";
 import { X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export type ReceiptDetailData = {
   merchantName: string;
@@ -38,6 +39,12 @@ export function ReceiptDetailModal({
 }) {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
+  const receiptRef = useRef<HTMLDivElement>(null);
+
+  const fileDate = useMemo(
+    () => new Date(detail?.receipt.created_at ?? Date.now()).toISOString().slice(0, 10),
+    [detail?.receipt.created_at]
+  );
 
   useEffect(() => {
     setEmail(sandboxRecipient ?? "");
@@ -117,12 +124,22 @@ export function ReceiptDetailModal({
           ) : null}
         </div>
 
-        <ReceiptCard
+        <div ref={receiptRef} className="receipt-print-area">
+          <ReceiptCard
+            merchantName={detail.merchantName}
+            merchantProfile={profile}
+            receipt={detail.receipt}
+            showHeader={false}
+            className="border border-line shadow-none"
+          />
+        </div>
+
+        <ReceiptActionsRow
+          receiptRef={receiptRef}
           merchantName={detail.merchantName}
-          merchantProfile={profile}
-          receipt={detail.receipt}
-          showHeader={false}
-          className="border border-line shadow-none"
+          permalink={detail.receiptUrl}
+          fileDate={fileDate}
+          onNotify={(message) => onToast(message, "success")}
         />
 
         {profile.show_review && profile.google_review_url ? (
