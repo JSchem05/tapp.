@@ -1,9 +1,8 @@
-import { ReceiptView } from "@/components/receipt-view";
 import { Card } from "@/components/ui";
 import { createPublicClient } from "@/lib/supabase/public";
-import type { Receipt, ReceiptMerchantProfile, Tag } from "@/lib/types";
-import { getBaseUrl } from "@/lib/url";
+import type { ReceiptMerchantProfile, Tag } from "@/lib/types";
 import { AlertTriangle, ReceiptText } from "lucide-react";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -97,14 +96,13 @@ export default async function PublicReceiptPage({
     status: receiptStatus
   } = await supabase
     .from("receipts")
-    .select("*")
+    .select("id, awaiting_items")
     .eq("merchant_id", tag.merchant_id)
     .eq("tag_id", tag.id)
     .eq("is_latest", true)
-    .eq("awaiting_items", false)
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle<Receipt>();
+    .maybeSingle<{ id: string; awaiting_items: boolean }>();
 
   console.log("[public-receipt] latest receipt lookup", {
     tagCode: tag.tag_code,
@@ -115,11 +113,7 @@ export default async function PublicReceiptPage({
     receipt: receipt
       ? {
           id: receipt.id,
-          tag_id: receipt.tag_id,
-          merchant_id: receipt.merchant_id,
-          is_latest: receipt.is_latest,
-          total: receipt.total,
-          created_at: receipt.created_at
+          awaiting_items: receipt.awaiting_items
         }
       : null
   });
@@ -135,44 +129,48 @@ export default async function PublicReceiptPage({
     );
   }
 
-  const { data: history, error: historyError } = await supabase
+  if (receipt?.awaiting_items) {
+    return (
+      <PublicShell>
+        <EmptyReceipt
+          title="Receipt not ready yet"
+          body={`${tag.label} is still being prepared. Tap again in a moment once the merchant finishes this sale.`}
+        />
+      </PublicShell>
+    );
+  }
+
+  if (receipt) {
+    redirect(`/r/${receipt.id}`);
+  }
+
+  const { data: awaitingReceipt } = await supabase
     .from("receipts")
-    .select("*")
+    .select("id")
     .eq("merchant_id", tag.merchant_id)
     .eq("tag_id", tag.id)
-    .eq("awaiting_items", false)
+    .eq("awaiting_items", true)
     .order("created_at", { ascending: false })
-    .limit(10)
-    .returns<Receipt[]>();
+    .limit(1)
+    .maybeSingle<{ id: string }>();
 
-  console.log("[public-receipt] history lookup", {
-    tagCode: tag.tag_code,
-    error: historyError,
-    count: history?.length ?? 0
-  });
-
-  const merchantName = tag.merchants?.name ?? "Merchant";
-  const logoUrl = tag.merchants?.logo_url ?? null;
-  const baseUrl = getBaseUrl();
+  if (awaitingReceipt) {
+    return (
+      <PublicShell>
+        <EmptyReceipt
+          title="Receipt not ready yet"
+          body={`${tag.label} is still being prepared. Tap again in a moment once the merchant finishes this sale.`}
+        />
+      </PublicShell>
+    );
+  }
 
   return (
     <PublicShell>
-      {receipt ? (
-        <ReceiptView
-          merchantName={merchantName}
-          merchantId={tag.merchant_id}
-          merchantLogoUrl={logoUrl}
-          merchantProfile={tag.merchants}
-          receipt={receipt}
-          history={(history ?? []).filter((item) => item.id !== receipt.id)}
-          permalink={`${baseUrl}/r/${receipt.id}`}
-        />
-      ) : (
-        <EmptyReceipt
-          title="No receipt available yet"
-          body={`${tag.label} is ready. Ask the merchant to send the latest sale to this puck.`}
-        />
-      )}
+      <EmptyReceipt
+        title="No receipt available yet"
+        body={`${tag.label} is ready. Ask the merchant to send the latest sale to this puck.`}
+      />
     </PublicShell>
   );
 }
