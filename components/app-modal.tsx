@@ -2,7 +2,8 @@
 
 import { useModalLifecycle } from "@/lib/use-modal-lifecycle";
 import { cn } from "@/lib/utils";
-import { createContext, useContext, useEffect } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 const ModalScrollContext = createContext<React.RefObject<HTMLDivElement> | null>(null);
 
@@ -12,7 +13,7 @@ export function AppModal({
   resetKey,
   overlayClassName,
   containerClassName,
-  zIndexClassName = "z-50",
+  zIndexClassName,
   ariaLabelledBy,
   children
 }: {
@@ -25,7 +26,12 @@ export function AppModal({
   ariaLabelledBy?: string;
   children: React.ReactNode;
 }) {
+  const [mounted, setMounted] = useState(false);
   const bodyScrollRef = useModalLifecycle<HTMLDivElement>(open, resetKey);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -36,9 +42,9 @@ export function AppModal({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
+  return createPortal(
     <ModalScrollContext.Provider value={bodyScrollRef}>
       <div
         className={cn("modal-overlay", zIndexClassName, overlayClassName)}
@@ -55,7 +61,8 @@ export function AppModal({
           {children}
         </div>
       </div>
-    </ModalScrollContext.Provider>
+    </ModalScrollContext.Provider>,
+    document.body
   );
 }
 

@@ -719,7 +719,7 @@ function ModifierModal({
   const editing = typeof state.editIndex === "number";
 
   return (
-    <AppModal open onClose={onClose} zIndexClassName="z-40" resetKey={state.item.id}>
+    <AppModal open onClose={onClose} resetKey={state.item.id}>
       <AppModalHeader>
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-4">
@@ -873,7 +873,7 @@ function PaymentModal({
   onConfirm: () => void;
 }) {
   return (
-    <AppModal open onClose={onClose} zIndexClassName="z-40" containerClassName="max-w-[400px]">
+    <AppModal open onClose={onClose} containerClassName="max-w-[400px]">
       <AppModalHeader>
         <div className="flex items-start justify-between">
           <div>
