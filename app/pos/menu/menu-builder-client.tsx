@@ -25,6 +25,7 @@ import type {
   Modifier,
   ModifierGroup
 } from "@/lib/types";
+import { useModalLifecycle } from "@/lib/use-modal-lifecycle";
 import {
   DndContext,
   type DragEndEvent,
@@ -1328,9 +1329,14 @@ function ModalFrame({
   children: React.ReactNode;
   onClose: () => void;
 }) {
+  const scrollRef = useModalLifecycle<HTMLDivElement>();
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="animate-tapp-fade max-h-[90vh] w-full max-w-[480px] overflow-y-auto rounded-[24px] border border-line bg-white p-6 shadow-lift">
+      <div
+        ref={scrollRef}
+        className="animate-tapp-fade max-h-[90vh] w-full max-w-[480px] overflow-y-auto rounded-[24px] border border-line bg-white p-6 shadow-lift"
+      >
         <div className="mb-5 flex justify-end">
           <button
             type="button"

@@ -11,6 +11,7 @@ import { Input, Label } from "@/components/ui";
 import { getPromoConfig } from "@/lib/merchant-promo";
 import { formatDateTime } from "@/lib/money";
 import type { Receipt, ReceiptMerchantProfile } from "@/lib/types";
+import { useModalLifecycle } from "@/lib/use-modal-lifecycle";
 import { X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
@@ -37,6 +38,10 @@ export function ReceiptDetailModal({
 }) {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
+  const scrollRef = useModalLifecycle<HTMLDivElement>(
+    Boolean(detail),
+    detail?.receipt.id
+  );
 
   useEffect(() => {
     setEmail(sandboxRecipient ?? "");
@@ -94,6 +99,7 @@ export function ReceiptDetailModal({
       role="presentation"
     >
       <div
+        ref={scrollRef}
         className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[16px] bg-white p-6 shadow-lift"
         onClick={(event) => event.stopPropagation()}
         role="dialog"

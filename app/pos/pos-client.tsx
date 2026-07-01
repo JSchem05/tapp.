@@ -11,6 +11,7 @@ import type {
   PosOrderItem,
   Tag
 } from "@/lib/types";
+import { useModalLifecycle } from "@/lib/use-modal-lifecycle";
 import {
   ChevronDown,
   ChevronRight,
@@ -71,6 +72,7 @@ export function PosClient({
   const [successUrl, setSuccessUrl] = useState("");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
+  const successModalRef = useModalLifecycle<HTMLDivElement>(Boolean(successUrl), successUrl);
   const orderQtyByItem = useMemo(() => {
     const map = new Map<string, number>();
     for (const item of orderItems) {
@@ -559,7 +561,10 @@ export function PosClient({
 
       {successUrl ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="animate-tapp-fade rounded-[20px] bg-white p-8 text-center shadow-lift">
+          <div
+            ref={successModalRef}
+            className="animate-tapp-fade rounded-[20px] bg-white p-8 text-center shadow-lift"
+          >
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-50 text-green-600">
               <Check className="h-8 w-8" />
             </div>
@@ -690,6 +695,7 @@ function ModifierModal({
   onAdd: () => void;
   onRemove: () => void;
 }) {
+  const scrollRef = useModalLifecycle<HTMLDivElement>();
   const selectedMods = state.item.modifierGroups.flatMap((group) =>
     (state.selections[group.id] ?? [])
       .map((id) => group.modifiers.find((modifier) => modifier.id === id))
@@ -717,7 +723,10 @@ function ModifierModal({
 
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/30 p-0 md:items-center md:p-4">
-      <div className="animate-tapp-fade max-h-[92vh] w-full max-w-[480px] overflow-y-auto rounded-t-[24px] bg-white p-6 shadow-lift md:rounded-[24px]">
+      <div
+        ref={scrollRef}
+        className="animate-tapp-fade max-h-[92vh] w-full max-w-[480px] overflow-y-auto rounded-t-[24px] bg-white p-6 shadow-lift md:rounded-[24px]"
+      >
         <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-[#DDDDDD]" />
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-4">
@@ -865,9 +874,14 @@ function PaymentModal({
   onClose: () => void;
   onConfirm: () => void;
 }) {
+  const scrollRef = useModalLifecycle<HTMLDivElement>();
+
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-      <div className="animate-tapp-fade w-full max-w-[400px] rounded-[20px] bg-white p-8 shadow-lift">
+      <div
+        ref={scrollRef}
+        className="animate-tapp-fade w-full max-w-[400px] rounded-[20px] bg-white p-8 shadow-lift"
+      >
         <div className="flex items-start justify-between">
           <div>
             <p className="text-sm font-semibold text-muted">Payment</p>
