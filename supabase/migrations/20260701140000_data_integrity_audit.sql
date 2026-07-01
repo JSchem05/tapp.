@@ -109,14 +109,31 @@ where not exists (
     and categories.merchant_id = items.merchant_id
 );
 
--- 8. Cancel open orders tied to deleted tables.
-update public.orders
-set status = 'cancelled'
-where status = 'open'
-  and table_id is not null
-  and not exists (
+-- 8. Cancel open orders tied to deleted tables (when table reservation schema exists).
+do $$
+begin
+  if exists (
     select 1
-    from public.tables
-    where tables.id = orders.table_id
-      and tables.merchant_id = orders.merchant_id
-  );
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'orders'
+      and column_name = 'table_id'
+  ) and exists (
+    select 1
+    from information_schema.tables
+    where table_schema = 'public'
+      and table_name = 'tables'
+  ) then
+    update public.orders
+    set status = 'cancelled'
+    where status = 'open'
+      and table_id is not null
+      and not exists (
+        select 1
+        from public.tables
+        where tables.id = orders.table_id
+          and tables.merchant_id = orders.merchant_id
+      );
+  end if;
+end
+$$;
