@@ -216,7 +216,7 @@ export async function updateCategoryOrder(ids: string[]) {
 
 export async function saveMenuItem(formData: FormData) {
   const { supabase, merchant, staff } = await getMerchantAccessContext();
-  const id = String(formData.get("id") ?? "");
+  const id = String(formData.get("id") ?? "").trim();
   const name = normalizeCategoryDisplayName(String(formData.get("name") ?? ""));
   const categoryId = String(formData.get("category_id") ?? "");
   const price = Number(formData.get("price") ?? 0);
@@ -234,17 +234,23 @@ export async function saveMenuItem(formData: FormData) {
 
   let imageUrl = String(formData.get("existing_image_url") ?? "") || null;
   if (image instanceof File && image.size > 0) {
-    if (!image.type.startsWith("image/")) {
-      redirect(menuPath(staff, "?tab=items&error=Image%20must%20be%20an%20image"));
+    const allowedImageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowedImageTypes.includes(image.type)) {
+      redirect(menuPath(staff, "?tab=items&error=Upload%20a%20JPG,%20PNG,%20WebP,%20or%20GIF%20image"));
+    }
+    if (image.size > 5 * 1024 * 1024) {
+      redirect(menuPath(staff, "?tab=items&error=Image%20must%20be%205MB%20or%20smaller"));
     }
     const extension = image.name.split(".").pop()?.toLowerCase() ?? "png";
     const imagePath = `${merchant.id}/item-${Date.now()}.${extension}`;
-    const { error: uploadError } = await supabase.storage
-      .from("menu-images")
-      .upload(imagePath, image, {
+    const { error: uploadError } = await withServerTimeout(
+      supabase.storage.from("menu-images").upload(imagePath, image, {
         contentType: image.type,
         upsert: true
-      });
+      }),
+      8000,
+      "Image upload timed out. Try again."
+    );
     if (uploadError) {
       redirect(menuPath(staff, `?tab=items&error=${encodeURIComponent(uploadError.message)}`));
     }
@@ -263,23 +269,35 @@ export async function saveMenuItem(formData: FormData) {
 
   let itemId = id;
   if (id) {
-    const { error } = await supabase
-      .from("menu_items")
-      .update(payload)
-      .eq("id", id)
-      .eq("merchant_id", merchant.id);
-    if (error) redirect(menuPath(staff, `?tab=items&error=${encodeURIComponent(error.message)}`));
+    const { data, error } = await withServerTimeout(
+      supabase
+        .from("menu_items")
+        .update(payload)
+        .eq("id", id)
+        .eq("merchant_id", merchant.id)
+        .select("id")
+        .single<{ id: string }>(),
+      8000,
+      "Item save timed out. Try again."
+    );
+    if (error || !data) {
+      redirect(
+        menuPath(
+          staff,
+          `?tab=items&error=${encodeURIComponent(error?.message ?? "Item could not be updated")}`
+        )
+      );
+    }
   } else {
-    const { count } = await supabase
-      .from("menu_items")
-      .select("id", { count: "exact", head: true })
-      .eq("merchant_id", merchant.id)
-      .eq("category_id", categoryId);
-    const { data, error } = await supabase
-      .from("menu_items")
-      .insert({ ...payload, sort_order: count ?? 0 })
-      .select("id")
-      .single<{ id: string }>();
+    const { data, error } = await withServerTimeout(
+      supabase
+        .from("menu_items")
+        .insert({ ...payload, sort_order: Math.floor(Date.now() / 1000) })
+        .select("id")
+        .single<{ id: string }>(),
+      8000,
+      "Item save timed out. Try again."
+    );
     if (error || !data) {
       redirect(
         menuPath(
@@ -294,14 +312,29 @@ export async function saveMenuItem(formData: FormData) {
   const newGroupId = await maybeCreateInlineModifierGroup(formData);
   const linkedGroupIds = Array.from(new Set([...groupIds, ...(newGroupId ? [newGroupId] : [])]));
 
-  await supabase.from("item_modifier_groups").delete().eq("item_id", itemId);
+  const { error: linkDeleteError } = await withServerTimeout(
+    supabase.from("item_modifier_groups").delete().eq("item_id", itemId),
+    8000,
+    "Modifier links timed out. Try again."
+  );
+  if (linkDeleteError) {
+    redirect(menuPath(staff, `?tab=items&error=${encodeURIComponent(linkDeleteError.message)}`));
+  }
+
   if (linkedGroupIds.length > 0) {
-    await supabase.from("item_modifier_groups").insert(
-      linkedGroupIds.map((groupId) => ({
-        item_id: itemId,
-        group_id: groupId
-      }))
+    const { error: linkInsertError } = await withServerTimeout(
+      supabase.from("item_modifier_groups").insert(
+        linkedGroupIds.map((groupId) => ({
+          item_id: itemId,
+          group_id: groupId
+        }))
+      ),
+      8000,
+      "Modifier links timed out. Try again."
     );
+    if (linkInsertError) {
+      redirect(menuPath(staff, `?tab=items&error=${encodeURIComponent(linkInsertError.message)}`));
+    }
   }
 
   revalidatePath("/pos");
@@ -574,4 +607,26 @@ async function menuItemNameExists(
   return (data ?? []).some(
     (item) => item.id !== exceptId && normalizeCategoryName(item.name) === normalized
   );
+}
+
+async function withServerTimeout<T extends { error: { message: string } | null }>(
+  promise: PromiseLike<T>,
+  timeoutMs: number,
+  message: string
+) {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((resolve) => {
+        timeoutId = setTimeout(
+          () => resolve({ error: new Error(message) } as unknown as T),
+          timeoutMs
+        );
+      })
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }

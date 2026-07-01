@@ -51,6 +51,7 @@ import {
   X
 } from "lucide-react";
 import { useMemo, useRef, useState, useTransition } from "react";
+import { useFormStatus } from "react-dom";
 
 type Tab = "categories" | "items" | "modifiers";
 
@@ -480,6 +481,7 @@ function ItemEditor({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [uploadToast, setUploadToast] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [newGroupOpen, setNewGroupOpen] = useState(false);
   const [newGroup, setNewGroup] = useState({
     name: "",
@@ -523,13 +525,15 @@ function ItemEditor({
         .toLowerCase();
       const path = `${merchantId}/item-${Date.now()}-${safeName || "image"}.${extension}`;
       const supabase = createClient();
-      const { error } = await supabase.storage
-        .from("menu-images")
-        .upload(path, file, {
+      const { error } = await withTimeout(
+        supabase.storage.from("menu-images").upload(path, file, {
           cacheControl: "3600",
           contentType: file.type,
           upsert: true
-        });
+        }),
+        8000,
+        "Image upload timed out. Check your connection and try again."
+      );
 
       if (error) {
         showUploadError(error.message);
@@ -584,7 +588,23 @@ function ItemEditor({
       ) : null}
       {open ? (
         <ModalFrame onClose={() => setOpen(false)}>
-          <form action={saveMenuItem}>
+          <form
+            action={saveMenuItem}
+            onSubmit={(event) => {
+              if (uploading) {
+                event.preventDefault();
+                showUploadError("Wait for the image upload to finish before saving.");
+                return;
+              }
+
+              if (submitting) {
+                event.preventDefault();
+                return;
+              }
+
+              setSubmitting(true);
+            }}
+          >
             <input type="hidden" name="id" value={item?.id ?? ""} />
             <input type="hidden" name="existing_image_url" value={state.imageUrl} />
             <input type="hidden" name="is_available" value={String(state.is_available)} />
@@ -889,12 +909,11 @@ function ItemEditor({
                 ) : null}
               </section>
             </div>
-            <button className="mt-6 h-12 w-full rounded-[10px] bg-blue text-sm font-bold text-white">
-              Save item
-            </button>
+            <SaveItemButton saving={submitting} uploading={uploading} />
             <button
               type="button"
               onClick={() => setOpen(false)}
+              disabled={submitting}
               className="mt-3 w-full text-center text-sm font-semibold text-muted"
             >
               Cancel
@@ -904,6 +923,41 @@ function ItemEditor({
       ) : null}
     </>
   );
+}
+
+function SaveItemButton({
+  saving,
+  uploading
+}: {
+  saving: boolean;
+  uploading: boolean;
+}) {
+  const { pending } = useFormStatus();
+  const isSaving = pending || saving;
+  const disabled = isSaving || uploading;
+
+  return (
+    <button
+      disabled={disabled}
+      className="mt-6 h-12 w-full rounded-[10px] bg-blue text-sm font-bold text-white transition disabled:cursor-not-allowed disabled:bg-blue/60"
+    >
+      {uploading ? "Uploading..." : isSaving ? "Saving..." : "Save item"}
+    </button>
+  );
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+      })
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
 
 function ModifiersTab({
