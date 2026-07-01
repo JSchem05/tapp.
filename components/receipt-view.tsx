@@ -143,6 +143,7 @@ export function ReceiptView({
         <ReceiptCard
           merchantName={merchantName}
           merchantLogoUrl={merchantLogoUrl}
+          merchantProfile={profile}
           receipt={receipt}
           compact={compact}
           showHeader={false}
@@ -208,6 +209,7 @@ export function ReceiptView({
           <PreviousVisits
             merchantName={merchantName}
             merchantLogoUrl={merchantLogoUrl}
+            merchantProfile={profile}
             receipts={history}
           />
         </ReceiptSection>
@@ -471,6 +473,7 @@ function QrSection({
 export function ReceiptCard({
   merchantName,
   merchantLogoUrl,
+  merchantProfile,
   receipt,
   compact = false,
   showHeader = true,
@@ -478,6 +481,7 @@ export function ReceiptCard({
 }: {
   merchantName: string;
   merchantLogoUrl?: string | null;
+  merchantProfile?: Partial<ReceiptMerchantProfile> | null;
   receipt: ReceiptDisplay;
   compact?: boolean;
   showHeader?: boolean;
@@ -507,6 +511,12 @@ export function ReceiptCard({
         </div>
       ) : null}
 
+      <BusinessDetailsDisclosure
+        profile={merchantProfile}
+        receiptId={receipt.id}
+        createdAt={receipt.created_at}
+      />
+
       <div className="divide-y divide-line border-y border-line">
         {items.map((item, index) => (
           <div
@@ -515,6 +525,7 @@ export function ReceiptCard({
           >
             <div className="min-w-0">
               <p className="truncate font-semibold text-ink">{item.name}</p>
+              <ReceiptItemModifierLine item={item} />
               <p className="mt-1 text-sm text-muted">
                 Qty {item.qty} x {formatCurrency(item.price)}
               </p>
@@ -550,10 +561,12 @@ export function ReceiptCard({
 function PreviousVisits({
   merchantName,
   merchantLogoUrl,
+  merchantProfile,
   receipts
 }: {
   merchantName: string;
   merchantLogoUrl?: string | null;
+  merchantProfile?: Partial<ReceiptMerchantProfile> | null;
   receipts: ReceiptDisplay[];
 }) {
   return (
@@ -585,6 +598,7 @@ function PreviousVisits({
               <ReceiptCard
                 merchantName={merchantName}
                 merchantLogoUrl={merchantLogoUrl}
+                merchantProfile={merchantProfile}
                 receipt={receipt}
                 compact
                 className="shadow-none"
@@ -595,6 +609,71 @@ function PreviousVisits({
       </div>
     </section>
   );
+}
+
+function BusinessDetailsDisclosure({
+  createdAt,
+  profile,
+  receiptId
+}: {
+  createdAt: string;
+  profile?: Partial<ReceiptMerchantProfile> | null;
+  receiptId: string;
+}) {
+  if (!profile?.show_business_details) return null;
+
+  const rows = [
+    { label: "Receipt ID", value: shortReceiptId(receiptId) },
+    { label: "Date & time", value: formatDateTime(createdAt) },
+    { label: "Store", value: profile.address },
+    { label: "Tel", value: profile.phone },
+    { label: "VAT No", value: profile.vat_number }
+  ].filter((row) => row.value);
+
+  return (
+    <details className="group mb-4 rounded-[14px] border border-line bg-white">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-left transition hover:bg-blueSoft">
+        <span className="text-xs font-semibold text-muted">Receipt details</span>
+        <ChevronDown className="h-4 w-4 text-muted transition group-open:rotate-180" />
+      </summary>
+      <div className="space-y-2 border-t border-line px-3 py-3">
+        {rows.map((row) => (
+          <div key={row.label} className="grid grid-cols-[88px_1fr] gap-3 text-xs">
+            <span className="text-muted">{row.label}</span>
+            <span className="min-w-0 break-words font-medium text-ink/75">
+              {row.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function ReceiptItemModifierLine({ item }: { item: ReceiptItem }) {
+  const modifierLine = formatReceiptItemModifiers(item);
+  if (!modifierLine) return null;
+
+  return (
+    <p className="mt-1 text-sm leading-5 text-muted">
+      {modifierLine}
+    </p>
+  );
+}
+
+function formatReceiptItemModifiers(item: ReceiptItem) {
+  if (!Array.isArray(item.modifiers) || item.modifiers.length === 0) return "";
+
+  return item.modifiers
+    .filter((modifier) => modifier.name)
+    .map((modifier) =>
+      modifier.group_name ? `${modifier.group_name}: ${modifier.name}` : modifier.name
+    )
+    .join(", ");
+}
+
+function shortReceiptId(receiptId: string) {
+  return receiptId.replace(/-/g, "").slice(0, 10).toUpperCase();
 }
 
 function LogoMark({

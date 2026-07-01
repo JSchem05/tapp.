@@ -109,11 +109,17 @@ export default async function SettingsPage({
                 label="Show merchant info"
                 defaultChecked={merchant.show_info ?? true}
               />
+              <ToggleField
+                name="show_business_details"
+                label="Show business details on receipt"
+                defaultChecked={merchant.show_business_details ?? false}
+              />
               <SettingInput name="tagline" label="Business tagline" defaultValue={merchant.tagline} placeholder="Fresh coffee, baked daily" />
               <SettingInput name="phone" label="Phone number" defaultValue={merchant.phone} placeholder="+356 2123 4567" icon={<Phone className="h-4 w-4" />} />
               <SettingInput name="website" label="Website" defaultValue={merchant.website} placeholder="https://example.com" icon={<Globe className="h-4 w-4" />} />
               <SettingInput name="instagram" label="Instagram handle" defaultValue={merchant.instagram} placeholder="@cafename" icon={<Instagram className="h-4 w-4" />} />
-              <SettingInput name="address" label="Address" defaultValue={merchant.address} placeholder="123 Republic Street, Valletta" icon={<MapPin className="h-4 w-4" />} />
+              <SettingInput name="address" label="Registered address" defaultValue={merchant.address} placeholder="123 Republic Street, Valletta" icon={<MapPin className="h-4 w-4" />} />
+              <SettingInput name="vat_number" label="VAT/registration number" defaultValue={merchant.vat_number} placeholder="MT12345678" />
             </SettingsGroup>
 
             <SettingsGroup title="WiFi details">

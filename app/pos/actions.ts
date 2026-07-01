@@ -101,11 +101,12 @@ export async function completePosOrder(input: CompleteOrderInput) {
       (sum, mod) => sum + mod.price_delta,
       0
     );
-    const modifierNames = item.modifiers.map((mod) => mod.name).join(", ");
     return {
-      name: modifierNames ? `${item.name} (${modifierNames})` : item.name,
+      name: item.name,
       qty: item.qty,
-      price: roundMoney(item.price + modifierTotal)
+      price: roundMoney(item.price + modifierTotal),
+      modifiers: item.modifiers,
+      comment: item.comment || undefined
     };
   });
 

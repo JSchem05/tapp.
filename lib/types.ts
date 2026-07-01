@@ -2,6 +2,14 @@ export type ReceiptItem = {
   name: string;
   qty: number;
   price: number;
+  modifiers?: Array<{
+    group_id?: string;
+    group_name?: string;
+    modifier_id?: string;
+    name: string;
+    price_delta?: number;
+  }>;
+  comment?: string;
 };
 
 export type PaymentMethod = "Card" | "Cash" | "Other";
@@ -41,6 +49,8 @@ export type Merchant = {
   show_email_opt_in: boolean;
   show_social: boolean;
   show_info: boolean;
+  show_business_details: boolean;
+  vat_number: string | null;
   created_at: string;
 };
 
@@ -77,6 +87,8 @@ export type ReceiptMerchantProfile = Pick<
   | "show_email_opt_in"
   | "show_social"
   | "show_info"
+  | "show_business_details"
+  | "vat_number"
 >;
 
 export type Tag = {

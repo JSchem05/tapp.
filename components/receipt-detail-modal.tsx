@@ -130,6 +130,7 @@ export function ReceiptDetailModal({
 
         <ReceiptCard
           merchantName={detail.merchantName}
+          merchantProfile={profile}
           receipt={detail.receipt}
           showHeader={false}
           className="border border-line shadow-none"

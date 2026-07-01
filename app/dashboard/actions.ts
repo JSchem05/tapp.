@@ -66,6 +66,7 @@ export async function updateMerchantSettings(formData: FormData) {
       website: optionalText(formData, "website"),
       instagram: normalizeInstagram(optionalText(formData, "instagram")),
       address: optionalText(formData, "address"),
+      vat_number: optionalText(formData, "vat_number"),
       wifi_name: optionalText(formData, "wifi_name"),
       wifi_password: optionalText(formData, "wifi_password"),
       google_review_url: googleReviewUrl,
@@ -89,7 +90,8 @@ export async function updateMerchantSettings(formData: FormData) {
       show_loyalty: checkboxOn(formData, "show_loyalty"),
       show_email_opt_in: checkboxOn(formData, "show_email_opt_in"),
       show_social: checkboxOn(formData, "show_social"),
-      show_info: checkboxOn(formData, "show_info")
+      show_info: checkboxOn(formData, "show_info"),
+      show_business_details: checkboxOn(formData, "show_business_details")
     })
     .eq("id", merchant.id);
 
