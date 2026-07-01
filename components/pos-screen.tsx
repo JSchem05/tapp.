@@ -1,7 +1,9 @@
-import { PosClient } from "@/app/pos/pos-client";
+import { PosApp } from "@/components/pos-app";
 import { PosSidebar } from "@/components/pos-sidebar";
-import type { PosData } from "@/lib/pos/data";
+import type { PosAppData } from "@/lib/pos/app-data";
+import { getResendSandboxRecipient } from "@/lib/resend-config";
 import { getBaseUrl } from "@/lib/url";
+import type { Merchant } from "@/lib/types";
 import { ArrowLeft, MenuSquare, ReceiptText } from "lucide-react";
 import Link from "next/link";
 
@@ -53,25 +55,33 @@ function PosOwnerHeader({
 }
 
 export function PosScreen({
-  merchantName,
+  merchant,
   data,
   mode,
-  staffName
+  staffName,
+  initialView
 }: {
-  merchantName: string;
-  data: PosData;
+  merchant: Merchant;
+  data: PosAppData;
   mode: "owner" | "staff";
   staffName?: string;
+  initialView?: string;
 }) {
-  const { categories, items, tags, staff, popularItemIds } = data;
+  const baseUrl = getBaseUrl();
+  const sandboxRecipient = getResendSandboxRecipient();
+  const { categories, items } = data.pos;
 
   if (!categories.length || !items.length) {
     return (
       <main className="flex min-h-screen bg-cream">
         <PosSidebar
           mode={mode}
-          staff={staff}
+          activeView="pos"
+          collapsed={false}
+          staff={data.pos.staff}
           selectedStaffId={null}
+          onToggleCollapsed={() => undefined}
+          onViewChange={() => undefined}
           onSelectStaff={() => undefined}
           className="min-h-screen"
         />
@@ -102,37 +112,20 @@ export function PosScreen({
     );
   }
 
-  if (mode === "staff") {
-    return (
-      <PosClient
-        merchantName={merchantName}
-        staffName={staffName}
-        categories={categories}
-        items={items}
-        tags={tags}
-        staff={staff}
-        popularItemIds={popularItemIds}
-        baseUrl={getBaseUrl()}
-        mode="staff"
-        embedded
-      />
-    );
-  }
-
   return (
-    <main className="h-screen overflow-hidden bg-cream">
-      <PosClient
-        merchantName={merchantName}
-        staffName={staffName}
-        categories={categories}
-        items={items}
-        tags={tags}
-        staff={staff}
-        popularItemIds={popularItemIds}
-        baseUrl={getBaseUrl()}
-        mode="owner"
+    <main className={mode === "owner" ? "h-screen overflow-hidden bg-cream" : undefined}>
+      <PosApp
+        mode={mode}
+        merchant={merchant}
+        data={data}
+        baseUrl={baseUrl}
+        sandboxRecipient={sandboxRecipient}
+        initialView={initialView}
+        embedded={mode === "staff"}
         headerSlot={
-          <PosOwnerHeader merchantName={merchantName} staffName={staffName} />
+          mode === "owner" ? (
+            <PosOwnerHeader merchantName={merchant.name} staffName={staffName} />
+          ) : undefined
         }
       />
     </main>

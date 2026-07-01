@@ -13,10 +13,27 @@ import { redirect } from "next/navigation";
 type CompleteOrderInput = {
   tagId: string;
   staffId?: string | null;
+  tableId?: string | null;
+  orderId?: string | null;
   items: PosOrderItem[];
   paymentMethod: "card" | "cash";
   status?: "open" | "completed";
 };
+
+async function setTableStatus(
+  supabase: Awaited<ReturnType<typeof getMerchantAccessContext>>["supabase"],
+  merchantId: string,
+  tableId: string | null | undefined,
+  status: "free" | "occupied"
+) {
+  if (!tableId) return;
+
+  await supabase
+    .from("tables")
+    .update({ status })
+    .eq("id", tableId)
+    .eq("merchant_id", merchantId);
+}
 
 function normalizeOrderItems(items: PosOrderItem[]) {
   return items
@@ -89,25 +106,46 @@ export async function completePosOrder(input: CompleteOrderInput) {
 
   const totals = totalsForOrder(items);
 
-  const { error: orderError } = await supabase.from("orders").insert({
+  const orderPayload = {
     merchant_id: merchant.id,
     tag_id: tag.id,
     staff_id: staffId,
+    table_id: input.tableId ?? null,
     items,
     subtotal: totals.subtotal,
     vat: totals.vat,
     total: totals.total,
     payment_method: input.paymentMethod,
     status
-  });
+  };
 
-  if (orderError) {
-    throw new Error(orderError.message);
+  if (input.orderId) {
+    const { error: updateOrderError } = await supabase
+      .from("orders")
+      .update(orderPayload)
+      .eq("id", input.orderId)
+      .eq("merchant_id", merchant.id);
+
+    if (updateOrderError) {
+      throw new Error(updateOrderError.message);
+    }
+  } else {
+    const { error: orderError } = await supabase.from("orders").insert(orderPayload);
+
+    if (orderError) {
+      throw new Error(orderError.message);
+    }
   }
 
   if (status === "open") {
+    await setTableStatus(supabase, merchant.id, input.tableId, "occupied");
     revalidatePath("/pos");
+    revalidatePath("/staff");
     return { status: "open" as const };
+  }
+
+  if (input.tableId) {
+    await setTableStatus(supabase, merchant.id, input.tableId, "free");
   }
 
   const receiptItems = items.map((item) => {
@@ -160,6 +198,74 @@ export async function completePosOrder(input: CompleteOrderInput) {
   revalidatePath("/staff");
   revalidatePath("/dashboard");
   return { status: "completed" as const, receiptId: receipt.id };
+}
+
+export async function createRestaurantTable(name: string) {
+  const { supabase, merchant } = await getMerchantAccessContext();
+  const trimmed = name.trim();
+
+  if (!trimmed) {
+    throw new Error("Table name is required.");
+  }
+
+  const { data, error } = await supabase
+    .from("tables")
+    .insert({
+      merchant_id: merchant.id,
+      name: trimmed,
+      status: "free"
+    })
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "Table could not be created.");
+  }
+
+  revalidatePath("/pos");
+  revalidatePath("/staff");
+  return data;
+}
+
+export async function toggleRestaurantTableStatus(tableId: string) {
+  const { supabase, merchant } = await getMerchantAccessContext();
+
+  const { data: table, error } = await supabase
+    .from("tables")
+    .select("id, status")
+    .eq("id", tableId)
+    .eq("merchant_id", merchant.id)
+    .single<{ id: string; status: "free" | "occupied" }>();
+
+  if (error || !table) {
+    throw new Error("Table was not found.");
+  }
+
+  const nextStatus = table.status === "free" ? "occupied" : "free";
+
+  await supabase
+    .from("tables")
+    .update({ status: nextStatus })
+    .eq("id", tableId)
+    .eq("merchant_id", merchant.id);
+
+  if (nextStatus === "free") {
+    await supabase
+      .from("orders")
+      .update({ status: "cancelled" })
+      .eq("merchant_id", merchant.id)
+      .eq("table_id", tableId)
+      .eq("status", "open");
+  }
+
+  revalidatePath("/pos");
+  revalidatePath("/staff");
+  return { status: nextStatus };
+}
+
+export async function refreshPosWorkspace() {
+  revalidatePath("/pos");
+  revalidatePath("/staff");
 }
 
 export async function createCategory(formData: FormData) {

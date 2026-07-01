@@ -1,19 +1,24 @@
 import { PosScreen } from "@/components/pos-screen";
-import { loadPosData } from "@/lib/pos/data";
+import { loadPosAppData } from "@/lib/pos/app-data";
 import { getStaffContext } from "@/lib/merchant-context";
 
 export const dynamic = "force-dynamic";
 
-export default async function StaffPosPage() {
+export default async function StaffPosPage({
+  searchParams
+}: {
+  searchParams?: { view?: string };
+}) {
   const { supabase, merchant, staff } = await getStaffContext();
-  const data = await loadPosData(supabase, merchant.id);
+  const data = await loadPosAppData(supabase, merchant, "staff");
 
   return (
     <PosScreen
-      merchantName={merchant.name}
-      staffName={staff.name}
+      merchant={merchant}
       data={data}
       mode="staff"
+      staffName={staff.name}
+      initialView={searchParams?.view}
     />
   );
 }

@@ -9,11 +9,11 @@ import type {
   Category,
   PosModifierSelection,
   PosOrderItem,
-  Staff,
+  RestaurantTable,
   Tag
 } from "@/lib/types";
 import { AppModal, AppModalBody, AppModalFooter, AppModalHeader } from "@/components/app-modal";
-import { PosSidebar } from "@/components/pos-sidebar";
+import type { PosOrderBootstrap } from "@/components/pos-app";
 import {
   Banknote,
   Check,
@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 
 const PASTEL_PALETTE = ["#E8F0FE", "#E6F7EF", "#FEF3E2", "#F0EBFC", "#FDEDF3"] as const;
 
@@ -56,29 +56,35 @@ export function PosClient({
   categories,
   items,
   tags,
-  staff,
   popularItemIds,
   baseUrl,
-  mode,
+  selectedStaffId,
+  tables,
+  orderBootstrap,
+  onOrderBootstrapConsumed,
+  onTablesChanged,
   headerSlot,
   embedded = false
 }: {
   merchantName: string;
-  staffName?: string;
   categories: Category[];
   items: PosMenuItem[];
   tags: Tag[];
-  staff: Staff[];
   popularItemIds: string[];
   baseUrl: string;
-  mode: "owner" | "staff";
+  selectedStaffId: string | null;
+  tables: RestaurantTable[];
+  orderBootstrap: PosOrderBootstrap | null;
+  onOrderBootstrapConsumed: () => void;
+  onTablesChanged: () => void;
   headerSlot?: ReactNode;
   embedded?: boolean;
 }) {
   const [activeCategory, setActiveCategory] = useState(categories[0]?.id ?? "");
   const [query, setQuery] = useState("");
   const [orderItems, setOrderItems] = useState<PosOrderItem[]>([]);
-  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  const [openOrderId, setOpenOrderId] = useState<string | null>(null);
   const [selectedTagId, setSelectedTagId] = useState(tags[0]?.id ?? "");
   const [counterEditOpen, setCounterEditOpen] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
@@ -90,6 +96,14 @@ export function PosClient({
   const [successUrl, setSuccessUrl] = useState("");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!orderBootstrap) return;
+    setOrderItems(orderBootstrap.items);
+    setOpenOrderId(orderBootstrap.orderId);
+    setSelectedTableId(orderBootstrap.tableId);
+    onOrderBootstrapConsumed();
+  }, [orderBootstrap, onOrderBootstrapConsumed]);
 
   const orderQtyByItem = useMemo(() => {
     const map = new Map<string, number>();
@@ -290,13 +304,11 @@ export function PosClient({
 
   function resetOrder() {
     setOrderItems([]);
+    setOpenOrderId(null);
+    setSelectedTableId(null);
     setPaymentOpen(false);
     setSuccessUrl("");
     setError("");
-  }
-
-  function toggleStaffSelection(staffId: string) {
-    setSelectedStaffId((current) => (current === staffId ? null : staffId));
   }
 
   function submitOrder(status: "open" | "completed") {
@@ -306,6 +318,8 @@ export function PosClient({
         const result = await completePosOrder({
           tagId: selectedTagId,
           staffId: selectedStaffId,
+          tableId: selectedTableId,
+          orderId: openOrderId,
           items: orderItems,
           paymentMethod: payment.method,
           status
@@ -314,8 +328,10 @@ export function PosClient({
           const url = selectedTag ? `${baseUrl}/t/${selectedTag.tag_code}` : baseUrl;
           setSuccessUrl(url);
           setPaymentOpen(false);
+          onTablesChanged();
           window.setTimeout(resetOrder, 3000);
         } else {
+          onTablesChanged();
           resetOrder();
         }
       } catch (caught) {
@@ -324,23 +340,13 @@ export function PosClient({
     });
   }
 
+  const selectedTable = tables.find((table) => table.id === selectedTableId);
+
   return (
     <>
-    <div
-      className={`flex min-h-0 w-full bg-cream ${
-        embedded ? "min-h-[calc(100dvh-9rem)]" : "h-screen"
-      }`}
-    >
-      <PosSidebar
-        mode={mode}
-        staff={staff}
-        selectedStaffId={selectedStaffId}
-        onSelectStaff={toggleStaffSelection}
-        className={embedded ? "min-h-[calc(100dvh-9rem)]" : "h-screen"}
-      />
       <div
         className={`flex min-h-0 min-w-0 flex-1 flex-col ${
-          embedded ? "min-h-[calc(100dvh-9rem)]" : "h-screen"
+          embedded ? "min-h-[calc(100dvh-9rem)]" : "h-full"
         }`}
       >
         {headerSlot}
@@ -423,9 +429,26 @@ export function PosClient({
       <aside className="flex h-full min-h-0 w-[400px] flex-col border-l border-line bg-white">
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-5 py-4">
           <p className="truncate text-sm font-semibold text-ink">
-            {selectedTag?.label ?? "Order"}
+            {selectedTable ? selectedTable.name : selectedTag?.label ?? "Order"}
           </p>
-          <div className="relative shrink-0">
+          <div className="flex shrink-0 items-center gap-2">
+            {tables.length > 0 ? (
+              <select
+                value={selectedTableId ?? ""}
+                onChange={(event) =>
+                  setSelectedTableId(event.target.value || null)
+                }
+                className="h-8 max-w-[120px] rounded-[10px] border border-line bg-white px-2 text-xs font-semibold text-ink"
+              >
+                <option value="">No table</option>
+                {tables.map((table) => (
+                  <option key={table.id} value={table.id}>
+                    {table.name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            <div className="relative">
             <button
               type="button"
               onClick={() => setCounterEditOpen((open) => !open)}
@@ -455,6 +478,7 @@ export function PosClient({
                 ))}
               </div>
             ) : null}
+            </div>
           </div>
         </div>
 
@@ -586,7 +610,6 @@ export function PosClient({
       </aside>
         </div>
       </div>
-    </div>
 
       {modal ? (
         <ModifierModal

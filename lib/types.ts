@@ -198,12 +198,29 @@ export type Order = {
   merchant_id: string;
   tag_id: string;
   staff_id: string | null;
+  table_id: string | null;
   items: PosOrderItem[];
   subtotal: number;
   vat: number;
   total: number;
   payment_method: "card" | "cash";
   status: "open" | "completed" | "cancelled";
+  created_at: string;
+};
+
+export type RestaurantTable = {
+  id: string;
+  merchant_id: string;
+  name: string;
+  status: "free" | "occupied";
+  created_at: string;
+};
+
+export type OpenTableOrder = {
+  id: string;
+  table_id: string;
+  staff_id: string | null;
+  items: PosOrderItem[];
   created_at: string;
 };
 
