@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
   if (!code || !encodedState || !clientId || !clientSecret) {
-    return NextResponse.redirect(`${appUrl}/dashboard/settings?error=Missing%20SumUp%20OAuth%20data`);
+    return NextResponse.redirect(`${appUrl}/pos?view=settings&error=Missing%20SumUp%20OAuth%20data`);
   }
 
   const cookieStore = await cookies();
@@ -53,11 +53,11 @@ export async function GET(request: Request) {
     ) as { merchantId?: string };
     merchantIdFromState = decoded.merchantId ?? "";
   } catch {
-    return NextResponse.redirect(`${appUrl}/dashboard/settings?error=Invalid%20SumUp%20state`);
+    return NextResponse.redirect(`${appUrl}/pos?view=settings&error=Invalid%20SumUp%20state`);
   }
 
   if (merchantIdFromState !== user.id) {
-    return NextResponse.redirect(`${appUrl}/dashboard/settings?error=SumUp%20state%20mismatch`);
+    return NextResponse.redirect(`${appUrl}/pos?view=settings&error=SumUp%20state%20mismatch`);
   }
 
   const tokenRes = await fetch("https://api.sumup.com/token", {
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
   });
 
   if (!tokenRes.ok) {
-    return NextResponse.redirect(`${appUrl}/dashboard/settings?error=SumUp%20token%20exchange%20failed`);
+    return NextResponse.redirect(`${appUrl}/pos?view=settings&error=SumUp%20token%20exchange%20failed`);
   }
 
   const token = (await tokenRes.json()) as SumupTokenResponse;
@@ -104,5 +104,5 @@ export async function GET(request: Request) {
     });
   }
 
-  return NextResponse.redirect(`${appUrl}/dashboard/settings?saved=1`);
+  return NextResponse.redirect(`${appUrl}/pos?view=settings&saved=1`);
 }

@@ -7,7 +7,13 @@ export const dynamic = "force-dynamic";
 export default async function PosPage({
   searchParams
 }: {
-  searchParams?: { view?: string };
+  searchParams?: {
+    view?: string;
+    tab?: string;
+    tag?: string;
+    error?: string;
+    saved?: string;
+  };
 }) {
   const { supabase, merchant } = await getOwnerContext();
   const data = await loadPosAppData(supabase, merchant, "owner");
@@ -17,7 +23,7 @@ export default async function PosPage({
       merchant={merchant}
       data={data}
       mode="owner"
-      initialView={searchParams?.view}
+      searchParams={searchParams}
     />
   );
 }

@@ -5,8 +5,9 @@ import { generateStaffCode } from "@/lib/device-codes";
 import { getOwnerContext } from "@/lib/merchant-context";
 import { createClient } from "@/lib/supabase/server";
 import type { PosConnection, Staff } from "@/lib/types";
-import { redirect } from "next/navigation";
+import { ownerAppPath } from "@/lib/pos/view-routes";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 export async function logout() {
   const supabase = createClient();
@@ -21,14 +22,14 @@ export async function updateMerchantSettings(formData: FormData) {
   const logo = formData.get("logo");
 
   if (!name) {
-    redirect("/dashboard/settings?error=Business%20name%20is%20required");
+    redirect(ownerAppPath("settings", { error: "Business name is required" }));
   }
 
   let logoUrl = merchant.logo_url;
 
   if (logo instanceof File && logo.size > 0) {
     if (!logo.type.startsWith("image/")) {
-      redirect("/dashboard/settings?error=Logo%20must%20be%20an%20image");
+      redirect(ownerAppPath("settings", { error: "Logo must be an image" }));
     }
 
     const extension = logo.name.split(".").pop()?.toLowerCase() ?? "png";
@@ -41,7 +42,7 @@ export async function updateMerchantSettings(formData: FormData) {
       });
 
     if (uploadError) {
-      redirect(`/dashboard/settings?error=${encodeURIComponent(uploadError.message)}`);
+      redirect(ownerAppPath("settings", { error: uploadError.message }));
     }
 
     const { data } = supabase.storage.from("logos").getPublicUrl(logoPath);
@@ -96,10 +97,10 @@ export async function updateMerchantSettings(formData: FormData) {
     .eq("id", merchant.id);
 
   if (error) {
-    redirect(`/dashboard/settings?error=${encodeURIComponent(error.message)}`);
+    redirect(ownerAppPath("settings", { error: error.message }));
   }
 
-  redirect("/dashboard/settings?saved=1");
+  redirect(ownerAppPath("settings", { saved: "1" }));
 }
 
 function optionalText(formData: FormData, key: string) {
@@ -133,7 +134,7 @@ export async function createTag(formData: FormData) {
       .slice(0, 10);
 
   if (!label || !tagCode) {
-    redirect("/dashboard?error=Add%20a%20label%20and%20tag%20code");
+    redirect(ownerAppPath("dashboard", { error: "Add a label and tag code" }));
   }
 
   const { error } = await supabase.from("tags").insert({
@@ -143,11 +144,11 @@ export async function createTag(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/dashboard?error=${encodeURIComponent(error.message)}`);
+    redirect(ownerAppPath("dashboard", { error: error.message }));
   }
 
-  revalidatePath("/dashboard");
-  redirect("/dashboard?tag_added=1");
+  revalidatePath("/pos");
+  redirect(ownerAppPath("dashboard", { tag_added: "1" }));
 }
 
 export async function setReceiptLive(formData: FormData) {
@@ -156,7 +157,7 @@ export async function setReceiptLive(formData: FormData) {
   const tagId = String(formData.get("tag_id") ?? "");
 
   if (!receiptId || !tagId) {
-    redirect("/dashboard?error=Receipt%20or%20tag%20missing");
+    redirect(ownerAppPath("dashboard", { error: "Receipt or tag missing" }));
   }
 
   const { error: clearError } = await supabase
@@ -167,7 +168,7 @@ export async function setReceiptLive(formData: FormData) {
     .eq("is_latest", true);
 
   if (clearError) {
-    redirect(`/dashboard?error=${encodeURIComponent(clearError.message)}`);
+    redirect(ownerAppPath("dashboard", { error: clearError.message }));
   }
 
   const { error: liveError } = await supabase
@@ -178,11 +179,11 @@ export async function setReceiptLive(formData: FormData) {
     .eq("id", receiptId);
 
   if (liveError) {
-    redirect(`/dashboard?error=${encodeURIComponent(liveError.message)}`);
+    redirect(ownerAppPath("dashboard", { error: liveError.message }));
   }
 
-  revalidatePath("/dashboard");
-  redirect(`/dashboard?tag=${tagId}`);
+  revalidatePath("/pos");
+  redirect(ownerAppPath("dashboard", { tag: tagId }));
 }
 
 export async function addStaffMember(formData: FormData) {
@@ -190,7 +191,7 @@ export async function addStaffMember(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
 
   if (!name) {
-    redirect("/dashboard/settings?error=Staff%20name%20is%20required");
+    redirect(ownerAppPath("settings", { error: "Staff name is required" }));
   }
 
   const code = await nextUniqueStaffPersonalCode(supabase);
@@ -207,14 +208,14 @@ export async function addStaffMember(formData: FormData) {
 
   if (error || !created?.code) {
     redirect(
-      `/dashboard/settings?error=${encodeURIComponent(
-        error?.message ?? "Staff code was not saved. Run pnpm run db:migrate and try again."
-      )}`
+      ownerAppPath("settings", {
+        error: error?.message ?? "Staff code was not saved. Run pnpm run db:migrate and try again."
+      })
     );
   }
 
-  revalidatePath("/dashboard/settings");
-  redirect("/dashboard/settings?saved=1");
+  revalidatePath("/pos");
+  redirect(ownerAppPath("settings", { saved: "1" }));
 }
 
 export async function deleteStaffMember(formData: FormData) {
@@ -222,7 +223,7 @@ export async function deleteStaffMember(formData: FormData) {
   const staffId = String(formData.get("staff_id") ?? "");
 
   if (!staffId) {
-    redirect("/dashboard/settings?error=Staff%20member%20not%20found");
+    redirect(ownerAppPath("settings", { error: "Staff member not found" }));
   }
 
   const { error } = await supabase
@@ -232,11 +233,11 @@ export async function deleteStaffMember(formData: FormData) {
     .eq("merchant_id", merchant.id);
 
   if (error) {
-    redirect(`/dashboard/settings?error=${encodeURIComponent(error.message)}`);
+    redirect(ownerAppPath("settings", { error: error.message }));
   }
 
-  revalidatePath("/dashboard/settings");
-  redirect("/dashboard/settings?saved=1");
+  revalidatePath("/pos");
+  redirect(ownerAppPath("settings", { saved: "1" }));
 }
 
 export async function connectSumUp() {
@@ -247,7 +248,7 @@ export async function connectSumUp() {
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
   if (!clientId) {
-    redirect("/dashboard/settings?error=Missing%20SUMUP_CLIENT_ID");
+    redirect(ownerAppPath("settings", { error: "Missing SUMUP_CLIENT_ID" }));
   }
 
   const statePayload = Buffer.from(

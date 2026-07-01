@@ -52,8 +52,8 @@ export async function setReceiptLiveInstant(receiptId: string) {
   }
 
   revalidatePath("/staff/receipts");
-  revalidatePath("/dashboard");
-  revalidatePath("/dashboard/receipts");
+  revalidatePath("/pos");
+  revalidatePath("/staff");
 
   return { tagLabel: tag.label };
 }

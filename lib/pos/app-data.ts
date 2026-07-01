@@ -1,3 +1,4 @@
+import { dedupeMerchantCategories } from "@/lib/menu-categories";
 import type { PosData } from "@/lib/pos/data";
 import { loadPosData } from "@/lib/pos/data";
 import {
@@ -7,7 +8,12 @@ import {
   type RevenueReceipt
 } from "@/lib/dashboard/revenue";
 import type {
+  Category,
+  ItemModifierGroup,
+  MenuItem,
   Merchant,
+  Modifier,
+  ModifierGroup,
   OpenTableOrder,
   PosConnection,
   Receipt,
@@ -18,10 +24,11 @@ import type {
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type PosView =
+  | "dashboard"
   | "pos"
   | "tables"
   | "receipts"
-  | "analytics"
+  | "menu"
   | "settings";
 
 export type PosAppData = {
@@ -31,13 +38,20 @@ export type PosAppData = {
   receipts: Receipt[];
   tags: Tag[];
   staffById: Record<string, string>;
-  analytics: {
+  dashboard: {
     totalRevenue: number;
     receiptsToday: number;
     avgTransaction: number;
-    counterCount: number;
     monthlyRevenue: number;
     chartData: Array<{ month: string; revenue: number }>;
+    latestByTagId: Record<string, Receipt | undefined>;
+  };
+  menu: {
+    categories: Category[];
+    items: MenuItem[];
+    groups: ModifierGroup[];
+    modifiers: Modifier[];
+    itemGroups: ItemModifierGroup[];
   };
   settings: {
     tags: Tag[];
@@ -52,6 +66,7 @@ export async function loadPosAppData(
   mode: "owner" | "staff"
 ): Promise<PosAppData> {
   const pos = await loadPosData(supabase, merchant.id);
+  await dedupeMerchantCategories(supabase, merchant.id);
   const chartStartDate = getRevenueChartStartDate();
   const todayKey = new Date().toISOString().slice(0, 10);
 
@@ -61,8 +76,14 @@ export async function loadPosAppData(
     { data: allReceipts },
     { data: staffReceipts },
     { data: revenueReceipts },
+    { data: latestReceipts },
     { data: staffMembers },
-    { data: sumupConnection }
+    { data: sumupConnection },
+    { data: categories },
+    { data: items },
+    { data: groups },
+    { data: modifiers },
+    { data: itemGroups }
   ] = await Promise.all([
     supabase
       .from("tables")
@@ -100,6 +121,14 @@ export async function loadPosAppData(
           .gte("created_at", chartStartDate.toISOString())
           .returns<RevenueReceipt[]>()
       : Promise.resolve({ data: [] as RevenueReceipt[] }),
+    mode === "owner"
+      ? supabase
+          .from("receipts")
+          .select("*")
+          .eq("merchant_id", merchant.id)
+          .eq("is_latest", true)
+          .returns<Receipt[]>()
+      : Promise.resolve({ data: [] as Receipt[] }),
     supabase.from("staff").select("id, name").eq("merchant_id", merchant.id),
     mode === "owner"
       ? supabase
@@ -108,7 +137,27 @@ export async function loadPosAppData(
           .eq("merchant_id", merchant.id)
           .eq("provider", "sumup")
           .maybeSingle<PosConnection>()
-      : Promise.resolve({ data: null as PosConnection | null })
+      : Promise.resolve({ data: null as PosConnection | null }),
+    supabase
+      .from("categories")
+      .select("*")
+      .eq("merchant_id", merchant.id)
+      .order("sort_order")
+      .returns<Category[]>(),
+    supabase
+      .from("menu_items")
+      .select("*")
+      .eq("merchant_id", merchant.id)
+      .order("sort_order")
+      .returns<MenuItem[]>(),
+    supabase
+      .from("modifier_groups")
+      .select("*")
+      .eq("merchant_id", merchant.id)
+      .order("created_at")
+      .returns<ModifierGroup[]>(),
+    supabase.from("modifiers").select("*").order("created_at").returns<Modifier[]>(),
+    supabase.from("item_modifier_groups").select("*").returns<ItemModifierGroup[]>()
   ]);
 
   const staffById = Object.fromEntries(
@@ -122,6 +171,9 @@ export async function loadPosAppData(
   const receiptsToday = receipts.filter((receipt) =>
     receipt.created_at.startsWith(todayKey)
   ).length;
+  const latestByTagId = Object.fromEntries(
+    (latestReceipts ?? []).map((receipt) => [receipt.tag_id, receipt])
+  );
 
   return {
     pos,
@@ -130,13 +182,20 @@ export async function loadPosAppData(
     receipts,
     tags: pos.tags,
     staffById,
-    analytics: {
+    dashboard: {
       totalRevenue,
       receiptsToday,
       avgTransaction: receipts.length ? totalRevenue / receipts.length : 0,
-      counterCount: pos.tags.length,
       monthlyRevenue: revenueForMonth(chartReceipts, 0),
-      chartData: buildRevenueData(chartReceipts)
+      chartData: buildRevenueData(chartReceipts),
+      latestByTagId
+    },
+    menu: {
+      categories: categories ?? [],
+      items: items ?? [],
+      groups: groups ?? [],
+      modifiers: modifiers ?? [],
+      itemGroups: itemGroups ?? []
     },
     settings: {
       tags: pos.tags,

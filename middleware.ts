@@ -105,7 +105,11 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isOwner && isStaffRoute(pathname)) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/pos", request.url));
+  }
+
+  if (isOwner && pathname === "/dashboard") {
+    return NextResponse.redirect(new URL("/pos", request.url));
   }
 
   return response;

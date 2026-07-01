@@ -1,12 +1,16 @@
 "use client";
 
+import { logout } from "@/app/dashboard/actions";
+import { logoutStaffDevice } from "@/app/device/actions";
 import type { PosView } from "@/lib/pos/app-data";
 import type { Staff } from "@/lib/types";
 import {
-  BarChart3,
   ChevronLeft,
   ChevronRight,
   Grid3X3,
+  Home,
+  LogOut,
+  MenuSquare,
   ReceiptText,
   Settings,
   UtensilsCrossed
@@ -17,17 +21,19 @@ const PASTEL_PALETTE = ["#E8F0FE", "#E6F7EF", "#FEF3E2", "#F0EBFC", "#FDEDF3"] a
 const SIDEBAR_STORAGE_KEY = "tapp_pos_sidebar_collapsed";
 
 const ownerNav: Array<{ id: PosView; label: string; icon: LucideIcon }> = [
+  { id: "dashboard", label: "Dashboard", icon: Home },
   { id: "pos", label: "POS", icon: Grid3X3 },
   { id: "tables", label: "Table Reservation", icon: UtensilsCrossed },
   { id: "receipts", label: "Receipt", icon: ReceiptText },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
+  { id: "menu", label: "Menu", icon: MenuSquare },
   { id: "settings", label: "Settings", icon: Settings }
 ];
 
 const staffNav: Array<{ id: PosView; label: string; icon: LucideIcon }> = [
   { id: "pos", label: "POS", icon: Grid3X3 },
   { id: "tables", label: "Table Reservation", icon: UtensilsCrossed },
-  { id: "receipts", label: "Receipt", icon: ReceiptText }
+  { id: "receipts", label: "Receipt", icon: ReceiptText },
+  { id: "menu", label: "Menu", icon: MenuSquare }
 ];
 
 export function readSidebarCollapsed() {
@@ -107,43 +113,69 @@ export function PosSidebar({
         })}
       </nav>
 
-      {staff.length > 0 ? (
-        <div
-          className={`mt-auto flex flex-col gap-2 border-t border-white/10 pt-4 ${
-            collapsed ? "items-center" : ""
-          }`}
-        >
-          {staff.map((member, index) => {
-            const selected = selectedStaffId === member.id;
-            const pastel = PASTEL_PALETTE[index % PASTEL_PALETTE.length];
-            return (
-              <button
-                key={member.id}
-                type="button"
-                title={collapsed ? member.name : undefined}
-                onClick={() => onSelectStaff(member.id)}
-                className={`flex items-center rounded-lg transition ${
-                  collapsed ? "justify-center p-1" : "gap-2.5 px-2 py-1.5"
-                } ${selected ? "bg-white/10" : "hover:bg-white/5"}`}
-              >
-                <span
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-ink ${
-                    selected ? "ring-2 ring-blue" : ""
-                  }`}
-                  style={{ backgroundColor: pastel }}
+      <div className="mt-auto space-y-2 border-t border-white/10 pt-4">
+        {staff.length > 0 ? (
+          <div className={`flex flex-col gap-2 ${collapsed ? "items-center" : ""}`}>
+            {staff.map((member, index) => {
+              const selected = selectedStaffId === member.id;
+              const pastel = PASTEL_PALETTE[index % PASTEL_PALETTE.length];
+              return (
+                <button
+                  key={member.id}
+                  type="button"
+                  title={collapsed ? member.name : undefined}
+                  onClick={() => onSelectStaff(member.id)}
+                  className={`flex items-center rounded-lg transition ${
+                    collapsed ? "justify-center p-1" : "gap-2.5 px-2 py-1.5"
+                  } ${selected ? "bg-white/10" : "hover:bg-white/5"}`}
                 >
-                  {member.name.trim()[0]?.toUpperCase() ?? "?"}
-                </span>
-                {!collapsed ? (
-                  <span className="truncate text-sm font-semibold text-white">
-                    {formatStaffShortName(member.name)}
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-ink ${
+                      selected ? "ring-2 ring-blue" : ""
+                    }`}
+                    style={{ backgroundColor: pastel }}
+                  >
+                    {member.name.trim()[0]?.toUpperCase() ?? "?"}
                   </span>
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
+                  {!collapsed ? (
+                    <span className="truncate text-sm font-semibold text-white">
+                      {formatStaffShortName(member.name)}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {mode === "owner" ? (
+          <form action={logout}>
+            <button
+              type="submit"
+              title={collapsed ? "Log out" : undefined}
+              className={`flex h-10 w-full items-center rounded-lg text-sm font-semibold text-white/55 transition hover:bg-white/10 hover:text-white ${
+                collapsed ? "justify-center px-0" : "gap-2.5 px-3"
+              }`}
+            >
+              <LogOut className="h-4 w-4 shrink-0" />
+              {!collapsed ? <span>Log out</span> : null}
+            </button>
+          </form>
+        ) : (
+          <form action={logoutStaffDevice}>
+            <button
+              type="submit"
+              title={collapsed ? "Log out device" : undefined}
+              className={`flex h-10 w-full items-center rounded-lg text-sm font-semibold text-white/55 transition hover:bg-white/10 hover:text-white ${
+                collapsed ? "justify-center px-0" : "gap-2.5 px-3"
+              }`}
+            >
+              <LogOut className="h-4 w-4 shrink-0" />
+              {!collapsed ? <span>Log out device</span> : null}
+            </button>
+          </form>
+        )}
+      </div>
     </aside>
   );
 }

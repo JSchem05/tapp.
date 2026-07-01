@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function CategoriesRedirect() {
-  redirect("/pos/menu?tab=categories");
+  redirect("/pos?view=menu&tab=categories");
 }

@@ -9,6 +9,7 @@ import { calculateReceiptTotals, roundMoney } from "@/lib/money";
 import type { PosOrderItem } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { menuBuilderPath } from "@/lib/pos/view-routes";
 
 type CompleteOrderInput = {
   tagId: string;
@@ -58,12 +59,12 @@ function totalsForOrder(items: PosOrderItem[]) {
 }
 
 function menuPath(staff: { id: string } | null, suffix = "") {
-  return `${staff ? "/staff/menu" : "/pos/menu"}${suffix}`;
+  return menuBuilderPath(staff, suffix);
 }
 
 function revalidateMenuPaths() {
-  revalidatePath("/pos/menu");
-  revalidatePath("/staff/menu");
+  revalidatePath("/pos");
+  revalidatePath("/staff");
 }
 
 export async function completePosOrder(input: CompleteOrderInput) {
@@ -196,7 +197,7 @@ export async function completePosOrder(input: CompleteOrderInput) {
 
   revalidatePath("/pos");
   revalidatePath("/staff");
-  revalidatePath("/dashboard");
+  revalidatePath("/pos");
   return { status: "completed" as const, receiptId: receipt.id };
 }
 

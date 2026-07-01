@@ -1,19 +1,7 @@
-import { DashboardSidebar } from "@/app/dashboard/dashboard-sidebar";
-import { getOwnerContext } from "@/lib/merchant-context";
-
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children
 }: {
   children: React.ReactNode;
 }) {
-  const { merchant } = await getOwnerContext();
-
-  return (
-    <main className="min-h-screen bg-cream">
-      <DashboardSidebar merchantName={merchant.name} merchantEmail={merchant.email} />
-      <div className="min-h-screen px-6 py-8 lg:ml-[200px] lg:px-8">
-        {children}
-      </div>
-    </main>
-  );
+  return <>{children}</>;
 }

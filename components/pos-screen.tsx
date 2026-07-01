@@ -4,68 +4,25 @@ import type { PosAppData } from "@/lib/pos/app-data";
 import { getResendSandboxRecipient } from "@/lib/resend-config";
 import { getBaseUrl } from "@/lib/url";
 import type { Merchant } from "@/lib/types";
-import { ArrowLeft, MenuSquare, ReceiptText } from "lucide-react";
+import { MenuSquare } from "lucide-react";
 import Link from "next/link";
-
-function PosOwnerHeader({
-  merchantName,
-  staffName
-}: {
-  merchantName: string;
-  staffName?: string;
-}) {
-  return (
-    <header className="flex h-16 shrink-0 flex-nowrap items-center justify-between border-b border-line bg-white px-6">
-      <div className="flex min-w-0 items-center gap-3">
-        <Link
-          href="/dashboard"
-          className="inline-flex h-9 shrink-0 items-center gap-2 rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink hover:bg-[#FAFAFA]"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Dashboard
-        </Link>
-        <div className="h-8 w-px bg-line" />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-bold text-ink">
-            {staffName ?? merchantName}
-          </p>
-          <p className="text-xs text-muted">
-            {staffName ? `${merchantName} · iPad POS` : "iPad POS"}
-          </p>
-        </div>
-      </div>
-      <div className="hidden shrink-0 text-[13px] font-semibold text-muted md:block">
-        {new Intl.DateTimeFormat("en-MT", {
-          dateStyle: "medium",
-          timeStyle: "short",
-          timeZone: "Europe/Malta"
-        }).format(new Date())}
-      </div>
-      <div className="flex items-center gap-3">
-        <Link
-          href="/pos/menu"
-          className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-line bg-white px-3 text-sm font-bold text-ink hover:bg-[#FAFAFA]"
-        >
-          <ReceiptText className="h-4 w-4" />
-          Menu Builder
-        </Link>
-      </div>
-    </header>
-  );
-}
 
 export function PosScreen({
   merchant,
   data,
   mode,
-  staffName,
-  initialView
+  searchParams
 }: {
   merchant: Merchant;
   data: PosAppData;
   mode: "owner" | "staff";
-  staffName?: string;
-  initialView?: string;
+  searchParams?: {
+    view?: string;
+    tab?: string;
+    tag?: string;
+    error?: string;
+    saved?: string;
+  };
 }) {
   const baseUrl = getBaseUrl();
   const sandboxRecipient = getResendSandboxRecipient();
@@ -76,7 +33,7 @@ export function PosScreen({
       <main className="flex min-h-screen bg-cream">
         <PosSidebar
           mode={mode}
-          activeView="pos"
+          activeView={mode === "owner" ? "dashboard" : "menu"}
           collapsed={false}
           staff={data.pos.staff}
           selectedStaffId={null}
@@ -94,13 +51,11 @@ export function PosScreen({
               Set up your menu to start taking orders
             </h1>
             <p className="mt-3 text-sm leading-6 text-muted">
-              {mode === "owner"
-                ? "Add categories and items in Menu Builder before taking POS orders."
-                : "Add categories and items in Menu before taking orders."}
+              Add categories and items in Menu before taking orders.
             </p>
             <div className="mt-6">
               <Link
-                href={mode === "owner" ? "/pos/menu" : "/staff/menu"}
+                href={mode === "owner" ? "/pos?view=menu" : "/staff?view=menu"}
                 className="inline-flex h-12 items-center justify-center rounded-[12px] bg-ink px-4 text-sm font-extrabold text-white"
               >
                 Go to Menu
@@ -120,13 +75,13 @@ export function PosScreen({
         data={data}
         baseUrl={baseUrl}
         sandboxRecipient={sandboxRecipient}
-        initialView={initialView}
-        embedded={mode === "staff"}
-        headerSlot={
-          mode === "owner" ? (
-            <PosOwnerHeader merchantName={merchant.name} staffName={staffName} />
-          ) : undefined
-        }
+        initialView={searchParams?.view}
+        menuTab={searchParams?.tab}
+        dashboardTag={searchParams?.tag}
+        menuError={searchParams?.view === "menu" ? searchParams.error : undefined}
+        dashboardError={searchParams?.view === "dashboard" ? searchParams.error : undefined}
+        settingsSaved={searchParams?.view === "settings" ? Boolean(searchParams.saved) : false}
+        settingsError={searchParams?.view === "settings" ? searchParams.error : undefined}
       />
     </main>
   );

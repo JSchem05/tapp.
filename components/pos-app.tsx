@@ -2,7 +2,8 @@
 
 import { PosClient } from "@/app/pos/pos-client";
 import { MerchantSettingsPanel } from "@/components/merchant-settings-panel";
-import { PosAnalyticsPanel } from "@/components/pos-analytics-panel";
+import { PosDashboardPanel } from "@/components/pos-dashboard-panel";
+import { PosMenuPanel } from "@/components/pos-menu-panel";
 import { PosReceiptsPanel } from "@/components/pos-receipts-panel";
 import {
   PosSidebar,
@@ -11,15 +12,28 @@ import {
 } from "@/components/pos-sidebar";
 import { PosTablesView } from "@/components/pos-tables-view";
 import type { PosAppData, PosView } from "@/lib/pos/app-data";
+import { ownerAppPath, staffAppPath } from "@/lib/pos/view-routes";
 import type { Merchant, OpenTableOrder, PosOrderItem } from "@/lib/types";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-const VALID_VIEWS: PosView[] = ["pos", "tables", "receipts", "analytics", "settings"];
+const OWNER_VIEWS: PosView[] = [
+  "dashboard",
+  "pos",
+  "tables",
+  "receipts",
+  "menu",
+  "settings"
+];
+const STAFF_VIEWS: PosView[] = ["pos", "tables", "receipts", "menu"];
 
-function parseView(value: string | null | undefined, mode: "owner" | "staff"): PosView {
-  if (!value || !VALID_VIEWS.includes(value as PosView)) return "pos";
-  if (mode === "staff" && (value === "analytics" || value === "settings")) return "pos";
+function parseView(
+  value: string | null | undefined,
+  mode: "owner" | "staff"
+): PosView {
+  const allowed = mode === "owner" ? OWNER_VIEWS : STAFF_VIEWS;
+  const fallback: PosView = mode === "owner" ? "dashboard" : "pos";
+  if (!value || !allowed.includes(value as PosView)) return fallback;
   return value as PosView;
 }
 
@@ -37,8 +51,12 @@ export function PosApp({
   baseUrl,
   sandboxRecipient,
   initialView,
-  headerSlot,
-  embedded = false
+  menuTab,
+  dashboardTag,
+  menuError,
+  settingsSaved,
+  settingsError,
+  dashboardError
 }: {
   mode: "owner" | "staff";
   merchant: Merchant;
@@ -46,8 +64,12 @@ export function PosApp({
   baseUrl: string;
   sandboxRecipient?: string | null;
   initialView?: string;
-  headerSlot?: ReactNode;
-  embedded?: boolean;
+  menuTab?: string;
+  dashboardTag?: string;
+  menuError?: string;
+  settingsSaved?: boolean;
+  settingsError?: string;
+  dashboardError?: string;
 }) {
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
@@ -56,23 +78,34 @@ export function PosApp({
   );
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [orderBootstrap, setOrderBootstrap] = useState<PosOrderBootstrap | null>(null);
+  const [dashboardTagId, setDashboardTagId] = useState(dashboardTag ?? "");
 
   useEffect(() => {
     setCollapsed(readSidebarCollapsed());
   }, []);
 
+  useEffect(() => {
+    setActiveView(parseView(initialView, mode));
+  }, [initialView, mode]);
+
+  useEffect(() => {
+    if (dashboardTag) setDashboardTagId(dashboardTag);
+  }, [dashboardTag]);
+
   const syncViewToUrl = useCallback(
-    (view: PosView) => {
-      const path = mode === "owner" ? "/pos" : "/staff";
-      const next = view === "pos" ? path : `${path}?view=${view}`;
-      window.history.replaceState(null, "", next);
+    (view: PosView, query?: Record<string, string>) => {
+      const path =
+        mode === "owner"
+          ? ownerAppPath(view, query)
+          : staffAppPath(view, query);
+      window.history.replaceState(null, "", path);
     },
     [mode]
   );
 
-  function changeView(view: PosView) {
+  function changeView(view: PosView, query?: Record<string, string>) {
     setActiveView(view);
-    syncViewToUrl(view);
+    syncViewToUrl(view, query);
   }
 
   function toggleCollapsed() {
@@ -104,12 +137,10 @@ export function PosApp({
     setOrderBootstrap(null);
   }
 
+  const shellHeight = mode === "staff" ? "min-h-[calc(100dvh-1rem)]" : "h-screen";
+
   return (
-    <div
-      className={`flex min-h-0 w-full overflow-hidden bg-cream ${
-        embedded ? "min-h-[calc(100dvh-9rem)]" : "h-screen"
-      }`}
-    >
+    <div className={`flex min-h-0 w-full overflow-hidden bg-cream ${shellHeight}`}>
       <PosSidebar
         mode={mode}
         activeView={activeView}
@@ -119,10 +150,27 @@ export function PosApp({
         onToggleCollapsed={toggleCollapsed}
         onViewChange={changeView}
         onSelectStaff={toggleStaffSelection}
-        className={embedded ? "min-h-[calc(100dvh-9rem)]" : "h-screen"}
+        className={shellHeight}
       />
 
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
+        {activeView === "dashboard" && mode === "owner" ? (
+          <PosDashboardPanel
+            merchant={merchant}
+            tags={data.tags}
+            receipts={data.receipts}
+            latestByTagId={data.dashboard.latestByTagId}
+            chartData={data.dashboard.chartData}
+            totalRevenue={data.dashboard.totalRevenue}
+            receiptsToday={data.dashboard.receiptsToday}
+            avgTransaction={data.dashboard.avgTransaction}
+            monthlyRevenue={data.dashboard.monthlyRevenue}
+            selectedTagId={dashboardTagId}
+            error={dashboardError}
+            onNavigate={changeView}
+          />
+        ) : null}
+
         {activeView === "pos" ? (
           <PosClient
             merchantName={merchant.name}
@@ -136,8 +184,7 @@ export function PosApp({
             orderBootstrap={orderBootstrap}
             onOrderBootstrapConsumed={clearOrderBootstrap}
             onTablesChanged={() => router.refresh()}
-            headerSlot={headerSlot}
-            embedded={embedded}
+            embedded={mode === "staff"}
           />
         ) : null}
 
@@ -163,18 +210,41 @@ export function PosApp({
           />
         ) : null}
 
-        {activeView === "analytics" && mode === "owner" ? (
-          <PosAnalyticsPanel merchantName={merchant.name} {...data.analytics} />
+        {activeView === "menu" ? (
+          <PosMenuPanel
+            merchantId={merchant.id}
+            merchantName={merchant.name}
+            categories={data.menu.categories}
+            items={data.menu.items}
+            groups={data.menu.groups}
+            modifiers={data.menu.modifiers}
+            itemGroups={data.menu.itemGroups}
+            initialTab={menuTab}
+            error={menuError}
+            backHref={mode === "owner" ? "/pos" : "/staff"}
+          />
         ) : null}
 
         {activeView === "settings" && mode === "owner" ? (
-          <MerchantSettingsPanel
-            merchant={merchant}
-            tags={data.settings.tags}
-            staff={data.settings.staff}
-            sumupConnection={data.settings.sumupConnection}
-            baseUrl={baseUrl}
-          />
+          <>
+            {settingsSaved ? (
+              <div className="border-b border-line bg-green-50 px-6 py-2 text-sm font-semibold text-green-700">
+                Settings saved.
+              </div>
+            ) : null}
+            {settingsError ? (
+              <div className="border-b border-line bg-red-50 px-6 py-2 text-sm font-semibold text-red-700">
+                {settingsError}
+              </div>
+            ) : null}
+            <MerchantSettingsPanel
+              merchant={merchant}
+              tags={data.settings.tags}
+              staff={data.settings.staff}
+              sumupConnection={data.settings.sumupConnection}
+              baseUrl={baseUrl}
+            />
+          </>
         ) : null}
       </div>
     </div>

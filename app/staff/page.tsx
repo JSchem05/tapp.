@@ -7,9 +7,13 @@ export const dynamic = "force-dynamic";
 export default async function StaffPosPage({
   searchParams
 }: {
-  searchParams?: { view?: string };
+  searchParams?: {
+    view?: string;
+    tab?: string;
+    error?: string;
+  };
 }) {
-  const { supabase, merchant, staff } = await getStaffContext();
+  const { supabase, merchant } = await getStaffContext();
   const data = await loadPosAppData(supabase, merchant, "staff");
 
   return (
@@ -17,8 +21,7 @@ export default async function StaffPosPage({
       merchant={merchant}
       data={data}
       mode="staff"
-      staffName={staff.name}
-      initialView={searchParams?.view}
+      searchParams={searchParams}
     />
   );
 }
