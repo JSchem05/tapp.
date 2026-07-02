@@ -14,7 +14,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-[16px] border border-line bg-white p-5 shadow-soft transition duration-150 hover:shadow-lift",
+        "rounded-2xl border border-line bg-white p-5 shadow-soft transition duration-150",
         className
       )}
       {...props}
@@ -31,7 +31,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-amber px-4 text-sm font-semibold text-white transition duration-150 hover:bg-clay disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-amber px-5 text-sm font-semibold text-white shadow-[0_1px_2px_rgba(16,22,35,0.12),inset_0_1px_0_rgba(255,255,255,0.12)] transition duration-150 hover:bg-clay active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60",
         className
       )}
       {...props}
@@ -46,7 +46,7 @@ export function SecondaryButton({
   return (
     <button
       className={cn(
-        "inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-line bg-white px-4 text-sm font-semibold text-ink transition duration-150 hover:bg-blueSoft disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-line bg-white px-5 text-sm font-semibold text-ink shadow-[0_1px_2px_rgba(16,22,35,0.05)] transition duration-150 hover:border-faint/60 hover:bg-cream active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60",
         className
       )}
       {...props}
@@ -61,7 +61,7 @@ export function Input({
   return (
     <input
       className={cn(
-        "h-10 w-full rounded-[10px] border border-line bg-white px-3 text-sm text-ink outline-none transition placeholder:text-muted/70 focus:border-amber focus:ring-4 focus:ring-amber/15",
+        "h-11 w-full rounded-xl border border-line bg-white px-3.5 text-sm text-ink outline-none transition placeholder:text-faint focus:border-amber focus:ring-4 focus:ring-amber/10",
         className
       )}
       {...props}
@@ -76,7 +76,7 @@ export function Select({
   return (
     <select
       className={cn(
-        "h-10 w-full rounded-[10px] border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/15",
+        "h-11 w-full rounded-xl border border-line bg-white px-3.5 text-sm text-ink outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10",
         className
       )}
       {...props}

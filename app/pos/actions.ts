@@ -107,11 +107,10 @@ export async function completePosOrder(input: CompleteOrderInput) {
 
   const totals = totalsForOrder(items);
 
-  const orderPayload = {
+  const orderPayload: Record<string, unknown> = {
     merchant_id: merchant.id,
     tag_id: tag.id,
     staff_id: staffId,
-    table_id: input.tableId ?? null,
     items,
     subtotal: totals.subtotal,
     vat: totals.vat,
@@ -119,6 +118,12 @@ export async function completePosOrder(input: CompleteOrderInput) {
     payment_method: input.paymentMethod,
     status
   };
+
+  // Backwards compatible: only send table_id when it's used.
+  // (Avoids failing inserts on environments where the column hasn't been migrated yet.)
+  if (input.tableId) {
+    orderPayload.table_id = input.tableId;
+  }
 
   if (input.orderId) {
     const { error: updateOrderError } = await supabase

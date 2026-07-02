@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { completePosOrder } from "@/app/pos/actions";
+import { isNetworkError, type QueuedOrderInput } from "@/lib/offline-queue";
 import type { PosMenuItem } from "@/lib/pos/data";
 import { formatCurrency, roundMoney } from "@/lib/money";
 import type {
@@ -63,8 +64,8 @@ export function PosClient({
   orderBootstrap,
   onOrderBootstrapConsumed,
   onTablesChanged,
-  headerSlot,
-  embedded = false
+  onQueueOffline,
+  headerSlot
 }: {
   merchantName: string;
   categories: Category[];
@@ -77,6 +78,7 @@ export function PosClient({
   orderBootstrap: PosOrderBootstrap | null;
   onOrderBootstrapConsumed: () => void;
   onTablesChanged: () => void;
+  onQueueOffline?: (input: QueuedOrderInput) => void;
   headerSlot?: ReactNode;
   embedded?: boolean;
 }) {
@@ -94,6 +96,7 @@ export function PosClient({
     tendered: ""
   });
   const [successUrl, setSuccessUrl] = useState("");
+  const [queuedOffline, setQueuedOffline] = useState(false);
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -308,22 +311,24 @@ export function PosClient({
     setSelectedTableId(null);
     setPaymentOpen(false);
     setSuccessUrl("");
+    setQueuedOffline(false);
     setError("");
   }
 
   function submitOrder(status: "open" | "completed") {
     setError("");
+    const input: QueuedOrderInput = {
+      tagId: selectedTagId,
+      staffId: selectedStaffId,
+      tableId: selectedTableId,
+      orderId: openOrderId,
+      items: orderItems,
+      paymentMethod: payment.method,
+      status
+    };
     startTransition(async () => {
       try {
-        const result = await completePosOrder({
-          tagId: selectedTagId,
-          staffId: selectedStaffId,
-          tableId: selectedTableId,
-          orderId: openOrderId,
-          items: orderItems,
-          paymentMethod: payment.method,
-          status
-        });
+        const result = await completePosOrder(input);
         if (result.status === "completed") {
           const url = selectedTag ? `${baseUrl}/t/${selectedTag.tag_code}` : baseUrl;
           setSuccessUrl(url);
@@ -335,6 +340,15 @@ export function PosClient({
           resetOrder();
         }
       } catch (caught) {
+        if (onQueueOffline && isNetworkError(caught)) {
+          // Bad Wi-Fi: store the order locally, keep the till moving, and
+          // let the background queue sync it when the connection returns.
+          onQueueOffline(input);
+          setPaymentOpen(false);
+          setQueuedOffline(true);
+          window.setTimeout(resetOrder, 3000);
+          return;
+        }
         setError(caught instanceof Error ? caught.message : "Order failed.");
       }
     });
@@ -344,11 +358,7 @@ export function PosClient({
 
   return (
     <>
-      <div
-        className={`flex min-h-0 min-w-0 flex-1 flex-col ${
-          embedded ? "min-h-[calc(100dvh-9rem)]" : "h-full"
-        }`}
-      >
+      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
         {headerSlot}
         <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_400px]">
       <section className="flex min-h-0 flex-col overflow-y-auto bg-cream">
@@ -631,6 +641,26 @@ export function PosClient({
           onClose={() => setPaymentOpen(false)}
           onConfirm={() => submitOrder("completed")}
         />
+      ) : null}
+
+      {queuedOffline ? (
+        <AppModal open onClose={resetOrder} resetKey="queued-offline">
+          <AppModalHeader>
+            <h2 className="text-center text-3xl font-extrabold text-ink">
+              Order saved
+            </h2>
+          </AppModalHeader>
+          <AppModalBody className="text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blueSoft text-blue">
+              <Check className="h-8 w-8" />
+            </div>
+            <p className="mt-4 text-sm leading-6 text-muted">
+              Connection is down, so the order was stored on this device. It
+              will sync automatically as soon as the network is back — the
+              customer&apos;s receipt goes live then.
+            </p>
+          </AppModalBody>
+        </AppModal>
       ) : null}
 
       {successUrl ? (

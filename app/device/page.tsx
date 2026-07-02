@@ -37,12 +37,12 @@ export default function DeviceLoginPage({
             </div>
 
             {searchParams?.error ? (
-              <p className="rounded-[10px] bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
                 {searchParams.error}
               </p>
             ) : null}
 
-            <button className="inline-flex h-12 w-full items-center justify-center rounded-[10px] bg-ink px-4 text-sm font-bold text-white transition hover:bg-clay hover:shadow-lift">
+            <button className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-amber px-4 text-sm font-bold text-white transition hover:bg-clay active:scale-[0.98]">
               Continue
             </button>
           </form>
